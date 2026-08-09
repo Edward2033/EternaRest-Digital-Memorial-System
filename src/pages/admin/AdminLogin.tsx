@@ -187,16 +187,6 @@ export default function AdminLogin() {
             </button>
           </form>
 
-          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
-            <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div className="text-sm text-amber-800">
-              <p className="font-semibold mb-1">Demo Credentials</p>
-              <p>admin@eternarest.com / admin123</p>
-            </div>
-          </div>
-
           <p className="text-center mt-8 text-sm text-gray-500">
             <a href="/" className="text-[#d4af37] hover:text-[#b8960c] font-medium transition-colors">
               ← Return to main site
