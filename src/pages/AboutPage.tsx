@@ -40,6 +40,12 @@ export default function AboutPage() {
   const facilityBody  = settings['about_facility_body']  || FALLBACK.facilityBody;
   const facilityImage = settings['about_facility_image'] || FALLBACK.facilityImage;
 
+  // Values — read from CMS if set, else fall back to static array
+  const displayValues = VALUES.map((v, i) => ({
+    title:       settings[`about_value_${i+1}_title`] || v.title,
+    description: settings[`about_value_${i+1}_desc`]  || v.description,
+  }));
+
   // Parse multi-line values
   const storyParagraphs    = storyBody.split('\n').filter(Boolean);
   const facilityParagraphs = facilityBody.split('\n').filter(Boolean);
@@ -82,7 +88,7 @@ export default function AboutPage() {
             <p className="text-gray-600 max-w-2xl mx-auto">These core principles guide everything we do at EternaRest.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {VALUES.map((value, index) => (
+            {displayValues.map((value, index) => (
               <div key={index} className="text-center p-6 rounded-xl hover:bg-[#f8f6f3] transition-colors">
                 <div className="w-16 h-16 bg-gradient-to-br from-[#d4af37] to-[#b8960c] rounded-xl flex items-center justify-center text-white mx-auto mb-4">
                   {VALUE_ICONS[index]}

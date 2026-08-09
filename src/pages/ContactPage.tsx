@@ -5,12 +5,15 @@ import { submitContact } from '@/hooks/useCMS';
 export default function ContactPage() {
   const { settings } = useCMS(['settings']);
 
-  const phone    = settings['site_phone']    || '+250 794 890 144';
-  const email    = settings['site_email']    || 'info@eternarest.com';
-  const address  = settings['address']       || 'Kigali, Rwanda';
-  const whatsapp = settings['whatsapp']      || '250794890144';
-  const hoursGardens = settings['hours_gardens'] || 'Open Daily 6am – 8pm';
-  const hoursOffice  = settings['hours_office']  || 'Mon–Sat 8am – 6pm';
+  const phone    = settings['site_phone']          || '+250 794 890 144';
+  const email    = settings['site_email']          || 'info@eternarest.com';
+  const address  = settings['address']             || 'Kigali, Rwanda';
+  const whatsapp = settings['whatsapp']            || '250794890144';
+  const hoursGardens  = settings['hours_gardens'] || 'Open Daily 6am – 8pm';
+  const hoursOffice   = settings['hours_office']  || 'Mon–Sat 8am – 6pm';
+  const heroTitle     = settings['contact_hero_title']    || 'Contact Us';
+  const heroSubtitle  = settings['contact_hero_subtitle'] || "We're here to help and answer any questions you may have. Reach out to us with compassion and care.";
+  const mapEmbed      = settings['contact_map_embed']     || '';
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -72,10 +75,10 @@ export default function ContactPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6">
-              Contact Us
+              {heroTitle}
             </h1>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              We're here to help and answer any questions you may have. Reach out to us with compassion and care.
+              {heroSubtitle}
             </p>
           </div>
         </div>
@@ -301,14 +304,20 @@ export default function ContactPage() {
               Visit our memorial gardens and experience the serene environment.
             </p>
           </div>
-          <div className="bg-gray-200 rounded-2xl h-96 flex items-center justify-center">
-            <div className="text-center">
-              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-                <p className="text-gray-500">{address}</p>
-            </div>
+          <div className="rounded-2xl h-96 overflow-hidden">
+            {mapEmbed ? (
+              <iframe src={mapEmbed} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Location Map" />
+            ) : (
+              <div className="bg-gray-200 w-full h-full flex items-center justify-center">
+                <div className="text-center">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <p className="text-gray-500">{address}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

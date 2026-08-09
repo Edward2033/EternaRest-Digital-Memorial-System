@@ -122,7 +122,18 @@ exports.bulkUpdateSettings = async (req, res) => {
     const ops = settings.map(({ key, value, group, isPublic }) => ({
       updateOne: {
         filter: { key },
-        update: { $set: { key, value, ...(group !== undefined && { group }), ...(isPublic !== undefined && { isPublic }) } },
+        update: {
+          $set: {
+            key,
+            value: value ?? '',
+            ...(group     !== undefined && { group }),
+            ...(isPublic  !== undefined && { isPublic }),
+          },
+          $setOnInsert: {
+            ...(group    === undefined && { group: 'general' }),
+            ...(isPublic === undefined && { isPublic: false }),
+          },
+        },
         upsert: true,
       },
     }));

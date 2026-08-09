@@ -16,7 +16,7 @@ const settingSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: 'general',
-      enum: ['general', 'email', 'payment', 'memorial', 'notifications', 'seo', 'social', 'appearance'],
+      enum: ['general', 'email', 'payment', 'memorial', 'notifications', 'seo', 'social', 'appearance', 'pages'],
     },
     description: {
       type: String,
