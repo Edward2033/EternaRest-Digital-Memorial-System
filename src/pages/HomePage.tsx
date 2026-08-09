@@ -281,17 +281,17 @@ export default function HomePage() {
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">{s.home_garden_title || 'Our Memorial Gardens'}</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">{s.home_garden_subtitle || 'A serene and beautiful final resting place designed with care.'}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
             {loading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className={`rounded-xl bg-gray-200 animate-pulse ${i === 0 ? 'md:col-span-2 h-[400px]' : 'h-[250px]'}`} />
+              ? Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-xl bg-gray-200 animate-pulse h-52" />
                 ))
               : galleryImages.map((img, i) => (
-                  <div key={i} className={`relative overflow-hidden rounded-xl shadow-lg group ${i === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}>
+                  <div key={i} className="relative overflow-hidden rounded-xl shadow-md group h-52">
                     <img src={img} alt={`Memorial ${i + 1}`}
-                      className={`w-full object-cover transition-transform duration-500 group-hover:scale-105 ${i === 0 ? 'h-[400px] md:h-full' : 'h-[250px]'}`}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1a2332]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1a2332]/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
                 ))
             }
