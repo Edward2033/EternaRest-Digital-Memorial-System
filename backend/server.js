@@ -1,0 +1,110 @@
+require('dotenv').config();
+const express   = require('express');
+const cors      = require('cors');
+const path      = require('path');
+const rateLimit = require('express-rate-limit');
+const connectDB = require('./config/db');
+
+// Register ALL Mongoose models before any route loads
+require('./models/index');
+
+const app = express();
+
+// Connect to MongoDB
+connectDB();
+
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+// In production restrict to configured origins; in dev allow everything.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+const corsOptions =
+  process.env.NODE_ENV === 'production' && ALLOWED_ORIGINS.length
+    ? {
+        origin: (origin, callback) => {
+          if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+            callback(null, true);
+          } else {
+            callback(new Error(`CORS: origin ${origin} not allowed`));
+          }
+        },
+        credentials: true,
+      }
+    : {};   // allow all in development
+
+app.use(cors(corsOptions));
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+const loginLimiter = rateLimit({
+  windowMs:         15 * 60 * 1000,  // 15 minutes
+  max:              10,               // max 10 login attempts per window
+  standardHeaders:  true,
+  legacyHeaders:    false,
+  message: { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' },
+});
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Request logging with body
+app.use((req, res, next) => {
+  console.log(`\n📨 ${req.method} ${req.path}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('📦 Body:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
+
+// Core routes
+app.use('/api/bookings',   require('./routes/bookingRoutes'));
+app.use('/api/memorials',  require('./routes/memorialRoutes'));
+app.use('/api/dashboard',  require('./routes/dashboardRoutes'));
+app.use('/api/media',      require('./routes/mediaRoutes'));
+app.use('/api/comments',   require('./routes/commentRoutes'));
+app.use('/api/niches',     require('./routes/nicheRoutes'));
+app.use('/api/family',     require('./routes/familyRoutes'));
+app.use('/api/packages',   require('./routes/packageRoutes'));
+app.use('/api/settings',   require('./routes/settingRoutes'));
+app.use('/api/roles',      require('./routes/roleRoutes'));
+app.use('/api/qr',         require('./routes/qrRoutes'));
+
+// CMS image upload (admin auth inside route)
+app.use('/api/upload',     require('./routes/uploadRoutes'));
+
+// Public CMS (no auth)
+app.use('/api/public',     require('./routes/publicRoutes'));
+
+// Payments
+app.use('/api/payments',   require('./routes/paymentRoutes'));
+
+// Admin — login first (rate limited), then full CMS (same prefix, Express falls through correctly)
+app.use('/api/admin/login', loginLimiter);
+app.use('/api/admin',      require('./routes/adminRoutes'));
+app.use('/api/admin',      require('./routes/cmsRoutes'));
+
+// Serve admin dashboard
+app.use('/admin', express.static(path.join(__dirname, 'public')));
+
+// Serve memorial pages
+app.get('/memorial/:bookingId', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'memorial.html'));
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Server is running' });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('❌ Server Error:', err);
+  res.status(500).json({ success: false, message: 'Internal server error', error: err.message });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

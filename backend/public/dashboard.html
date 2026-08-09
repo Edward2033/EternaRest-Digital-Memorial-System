@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - EternaRest Memorial</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>🏛️ EternaRest Admin Dashboard</h1>
+            <div class="header-actions">
+                <span id="lastUpdate">Last updated: --:--</span>
+                <button onclick="refreshBookings()" class="btn-refresh">🔄 Refresh</button>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Bookings</h3>
+                <p class="stat-number" id="totalBookings">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Pending</h3>
+                <p class="stat-number pending" id="pendingBookings">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Approved</h3>
+                <p class="stat-number approved" id="approvedBookings">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Memorials</h3>
+                <p class="stat-number" id="totalMemorials">0</p>
+            </div>
+        </div>
+
+        <div class="bookings-section">
+            <h2>📋 Live Bookings</h2>
+            <div class="table-container">
+                <table id="bookingsTable">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Deceased Name</th>
+                            <th>Package</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsBody">
+                        <tr><td colspan="7" class="loading">Loading bookings...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeUploadModal()">&times;</span>
+            <h2>Upload Media</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <input type="hidden" id="uploadBookingId">
+                <div class="form-group">
+                    <label>Select Photos/Videos (Max 10 files, 50MB each)</label>
+                    <input type="file" id="mediaFiles" name="media" multiple accept="image/*,video/*" required>
+                </div>
+                <div class="form-group">
+                    <label>Caption (Optional)</label>
+                    <input type="text" id="mediaCaption" name="caption" placeholder="Add a caption...">
+                </div>
+                <button type="submit" class="btn-primary">Upload</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

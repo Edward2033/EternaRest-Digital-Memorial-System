@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memorial Page</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .memorial-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .memorial-header { background: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        .memorial-header h1 { color: #2c3e50; margin-bottom: 10px; }
+        .dates { color: #7f8c8d; font-size: 18px; }
+        .biography { background: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
+        .media-gallery { background: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+        .gallery-item img, .gallery-item video { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; }
+        .tributes { background: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
+        .tribute-item { border-bottom: 1px solid #eee; padding: 15px 0; }
+        .tribute-form input, .tribute-form textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        .tribute-form button { background: #3498db; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; }
+        .qr-section { background: white; padding: 30px; border-radius: 10px; text-align: center; }
+        .qr-section img { max-width: 300px; }
+    </style>
+</head>
+<body>
+    <div class="memorial-container">
+        <div class="memorial-header">
+            <h1 id="deceasedName">Loading...</h1>
+            <p class="dates" id="dates"></p>
+        </div>
+        
+        <div class="biography">
+            <h2>Biography</h2>
+            <p id="biographyText"></p>
+        </div>
+        
+        <div class="media-gallery">
+            <h2>Photos & Videos</h2>
+            <div class="gallery-grid" id="mediaGallery"></div>
+        </div>
+        
+        <div class="tributes">
+            <h2>Tributes & Condolences</h2>
+            <div id="tributesList"></div>
+            <form class="tribute-form" id="tributeForm">
+                <h3>Leave a Tribute</h3>
+                <input type="text" id="tributeName" placeholder="Your Name" required>
+                <textarea id="tributeMessage" placeholder="Your Message" rows="4" required></textarea>
+                <button type="submit">Submit Tribute</button>
+            </form>
+        </div>
+        
+        <div class="qr-section">
+            <h2>Memorial QR Code</h2>
+            <img id="qrCode" src="" alt="QR Code">
+        </div>
+    </div>
+    
+    <script>
+        const bookingId = window.location.pathname.split('/').pop();
+        const API_BASE = 'http://localhost:5000/api';
+        
+        async function loadMemorial() {
+            try {
+                const [memorialRes, mediaRes, bookingRes] = await Promise.all([
+                    fetch(`${API_BASE}/memorials/${bookingId}`),
+                    fetch(`${API_BASE}/media/${bookingId}`),
+                    fetch(`${API_BASE}/bookings/${bookingId}`)
+                ]);
+                
+                const memorial = await memorialRes.json();
+                const media = await mediaRes.json();
+                const booking = await bookingRes.json();
+                
+                if (memorial.success) {
+                    const m = memorial.memorial;
+                    document.getElementById('deceasedName').textContent = m.deceasedName;
+                    document.getElementById('dates').textContent = 
+                        `${new Date(m.dateOfBirth).toLocaleDateString()} - ${new Date(m.dateOfDeath).toLocaleDateString()}`;
+                    document.getElementById('biographyText').textContent = m.biography || 'No biography available.';
+                    
+                    if (m.tributes && m.tributes.length > 0) {
+                        document.getElementById('tributesList').innerHTML = m.tributes.map(t => 
+                            `<div class="tribute-item"><strong>${t.name}</strong><p>${t.message}</p><small>${new Date(t.createdAt).toLocaleDateString()}</small></div>`
+                        ).join('');
+                    }
+                }
+                
+                if (media.success && media.media.length > 0) {
+                    document.getElementById('mediaGallery').innerHTML = media.media.map(m => 
+                        `<div class="gallery-item">${m.type === 'video' ? 
+                            `<video src="http://localhost:5000${m.url}" controls></video>` : 
+                            `<img src="http://localhost:5000${m.url}" alt="${m.caption}">`
+                        }</div>`
+                    ).join('');
+                }
+                
+                if (booking.success && booking.booking.qrCode) {
+                    document.getElementById('qrCode').src = `http://localhost:5000${booking.booking.qrCode}`;
+                }
+            } catch (error) {
+                console.error('Error loading memorial:', error);
+            }
+        }
+        
+        document.getElementById('tributeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('tributeName').value;
+            const message = document.getElementById('tributeMessage').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/memorials/${bookingId}/tribute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, message })
+                });
+                
+                if (response.ok) {
+                    alert('Tribute submitted!');
+                    e.target.reset();
+                    loadMemorial();
+                }
+            } catch (error) {
+                console.error('Error submitting tribute:', error);
+            }
+        });
+        
+        loadMemorial();
+    </script>
+</body>
+</html>
