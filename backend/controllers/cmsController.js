@@ -119,25 +119,18 @@ exports.bulkUpdateSettings = async (req, res) => {
     if (!Array.isArray(settings)) {
       return res.status(400).json({ success: false, message: 'settings must be an array' });
     }
-    const ops = settings.map(({ key, value, group, isPublic }) => ({
-      updateOne: {
-        filter: { key },
-        update: {
-          $set: {
-            key,
-            value: value ?? '',
-            ...(group     !== undefined && { group }),
-            ...(isPublic  !== undefined && { isPublic }),
-          },
-          $setOnInsert: {
-            ...(group    === undefined && { group: 'general' }),
-            ...(isPublic === undefined && { isPublic: false }),
-          },
-        },
-        upsert: true,
-      },
-    }));
-    await Setting.bulkWrite(ops);
-    res.json({ success: true, message: `${settings.length} settings updated` });
+    // Use individual upserts so Mongoose schema validation runs correctly
+    // Skip entries with empty values to avoid blanking out existing data
+    const ops = settings
+      .filter(({ value }) => value !== undefined && value !== null)
+      .map(({ key, value, group, isPublic }) =>
+        Setting.findOneAndUpdate(
+          { key },
+          { key, value, group: group || 'general', isPublic: isPublic !== undefined ? isPublic : false },
+          { upsert: true, new: true, setDefaultsOnInsert: true },
+        )
+      );
+    await Promise.all(ops);
+    res.json({ success: true, message: `${ops.length} settings updated` });
   } catch (e) { res.status(400).json({ success: false, error: e.message }); }
 };

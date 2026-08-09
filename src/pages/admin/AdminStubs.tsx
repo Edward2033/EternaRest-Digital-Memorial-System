@@ -702,7 +702,11 @@ export function AdminPageContent() {
     setSaving(true); setSaveStatus(null);
     try {
       const allFields = PAGE_SECTIONS.flatMap(s => s.fields);
-      const payload = allFields.map(f => ({ key: f.key, value: draft[f.key] ?? '', group: 'pages', isPublic: true }));
+      // Only send fields that have a value — never overwrite saved data with empty strings
+      const payload = allFields
+        .filter(f => (draft[f.key] ?? '').trim() !== '')
+        .map(f => ({ key: f.key, value: draft[f.key], group: 'pages', isPublic: true }));
+      if (payload.length === 0) { setSaveStatus('saved'); setSaving(false); return; }
       const r = await fetch(`${BASE}/admin/settings/bulk`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
