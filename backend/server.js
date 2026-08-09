@@ -32,7 +32,7 @@ const corsOptions =
         },
         credentials: true,
       }
-    : {};   // allow all in development
+    : { origin: true, credentials: true };   // allow all in development / when no origins configured
 
 app.use(cors(corsOptions));
 
