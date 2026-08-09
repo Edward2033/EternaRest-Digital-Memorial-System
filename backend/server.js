@@ -14,27 +14,7 @@ const app = express();
 connectDB();
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-// In production restrict to configured origins; in dev allow everything.
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map(o => o.trim())
-  .filter(Boolean);
-
-const corsOptions =
-  process.env.NODE_ENV === 'production' && ALLOWED_ORIGINS.length
-    ? {
-        origin: (origin, callback) => {
-          if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-            callback(null, true);
-          } else {
-            callback(new Error(`CORS: origin ${origin} not allowed`));
-          }
-        },
-        credentials: true,
-      }
-    : { origin: true, credentials: true };   // allow all in development / when no origins configured
-
-app.use(cors(corsOptions));
+app.use(cors({ origin: true, credentials: true }));
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 const loginLimiter = rateLimit({
