@@ -548,3 +548,239 @@ export function AdminPackages() {
     </AdminLayout>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAGE CONTENT MANAGER
+// Manages all text + images for Home, About, Contact pages via Settings keys
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import { uploadCMSImage } from '@/hooks/useCMS';
+
+const PAGE_SECTIONS = [
+  {
+    page: 'Home Page',
+    color: 'blue',
+    fields: [
+      { key: 'home_hero_title',       label: 'Hero Title',           type: 'text',     hint: 'e.g. Honoring Lives,' },
+      { key: 'home_hero_highlight',   label: 'Hero Highlight Text',  type: 'text',     hint: 'e.g. Preserving Memories' },
+      { key: 'home_hero_description', label: 'Hero Description',     type: 'textarea', hint: 'Subtitle below the hero heading' },
+      { key: 'home_hero_image',       label: 'Hero Background Image',type: 'image',    hint: 'Full-width hero background photo' },
+      { key: 'home_hero_btn1_text',   label: 'Button 1 Text',        type: 'text',     hint: 'e.g. Book a Niche' },
+      { key: 'home_hero_btn1_link',   label: 'Button 1 Link',        type: 'text',     hint: 'e.g. /book' },
+      { key: 'home_hero_btn2_text',   label: 'Button 2 Text',        type: 'text',     hint: 'e.g. Search Memorial' },
+      { key: 'home_hero_btn2_link',   label: 'Button 2 Link',        type: 'text',     hint: 'e.g. /search' },
+      { key: 'home_services_title',   label: 'Services Section Title',type: 'text',    hint: 'e.g. Our Services' },
+      { key: 'home_services_subtitle',label: 'Services Subtitle',    type: 'textarea', hint: 'Short description under the title' },
+      { key: 'home_garden_title',     label: 'Garden Section Title', type: 'text',     hint: 'e.g. Our Memorial Gardens' },
+      { key: 'home_garden_subtitle',  label: 'Garden Subtitle',      type: 'textarea', hint: 'Short description under the title' },
+      { key: 'home_garden_image_1',   label: 'Garden Photo 1 (Large)',type: 'image',   hint: 'Main large garden photo' },
+      { key: 'home_garden_image_2',   label: 'Garden Photo 2',       type: 'image',    hint: '' },
+      { key: 'home_garden_image_3',   label: 'Garden Photo 3',       type: 'image',    hint: '' },
+      { key: 'home_garden_image_4',   label: 'Garden Photo 4',       type: 'image',    hint: '' },
+      { key: 'home_garden_image_5',   label: 'Garden Photo 5',       type: 'image',    hint: '' },
+      { key: 'home_garden_image_6',   label: 'Garden Photo 6',       type: 'image',    hint: '' },
+      { key: 'home_testimonials_title',label: 'Testimonials Title',  type: 'text',     hint: 'e.g. What Families Say' },
+      { key: 'home_cta_title',        label: 'CTA Section Title',    type: 'text',     hint: 'e.g. Honor Your Loved One Today' },
+      { key: 'home_cta_subtitle',     label: 'CTA Subtitle',         type: 'textarea', hint: 'Text below the CTA heading' },
+    ],
+  },
+  {
+    page: 'About Page',
+    color: 'purple',
+    fields: [
+      { key: 'about_hero_title',      label: 'Hero Title',           type: 'text',     hint: 'e.g. About EternaRest' },
+      { key: 'about_hero_subtitle',   label: 'Hero Subtitle',        type: 'textarea', hint: 'Tagline under the hero title' },
+      { key: 'about_story_title',     label: 'Our Story Title',      type: 'text',     hint: 'e.g. Our Story' },
+      { key: 'about_story_body',      label: 'Our Story Text',       type: 'textarea', hint: 'Use new lines to separate paragraphs' },
+      { key: 'about_story_image',     label: 'Our Story Image',      type: 'image',    hint: 'Photo beside the story text' },
+      { key: 'about_facility_title',  label: 'Facility Section Title',type: 'text',    hint: 'e.g. Our Facility' },
+      { key: 'about_facility_body',   label: 'Facility Description', type: 'textarea', hint: 'Use new lines to separate paragraphs' },
+      { key: 'about_facility_image',  label: 'Facility Image',       type: 'image',    hint: 'Photo of the columbarium / facility' },
+      { key: 'about_value_1_title',   label: 'Value 1 Title',        type: 'text',     hint: 'e.g. Compassion' },
+      { key: 'about_value_1_desc',    label: 'Value 1 Description',  type: 'textarea', hint: '' },
+      { key: 'about_value_2_title',   label: 'Value 2 Title',        type: 'text',     hint: 'e.g. Dignity' },
+      { key: 'about_value_2_desc',    label: 'Value 2 Description',  type: 'textarea', hint: '' },
+      { key: 'about_value_3_title',   label: 'Value 3 Title',        type: 'text',     hint: 'e.g. Preservation' },
+      { key: 'about_value_3_desc',    label: 'Value 3 Description',  type: 'textarea', hint: '' },
+      { key: 'about_value_4_title',   label: 'Value 4 Title',        type: 'text',     hint: 'e.g. Community' },
+      { key: 'about_value_4_desc',    label: 'Value 4 Description',  type: 'textarea', hint: '' },
+    ],
+  },
+  {
+    page: 'Contact Page',
+    color: 'emerald',
+    fields: [
+      { key: 'contact_hero_title',    label: 'Hero Title',           type: 'text',     hint: 'e.g. Contact Us' },
+      { key: 'contact_hero_subtitle', label: 'Hero Subtitle',        type: 'textarea', hint: 'Tagline under the hero title' },
+      { key: 'contact_intro',         label: 'Intro Text',           type: 'textarea', hint: 'Text above the contact form' },
+      { key: 'contact_map_embed',     label: 'Google Maps Embed URL',type: 'text',     hint: 'Paste the src URL from Google Maps embed code' },
+    ],
+  },
+];
+
+const COLOR_MAP: Record<string, string> = {
+  blue:    'bg-blue-50 text-blue-700 border-blue-200',
+  purple:  'bg-purple-50 text-purple-700 border-purple-200',
+  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+};
+
+function ImageFieldUpload({ value, onChange, token, hint }: {
+  value: string; onChange: (url: string) => void; token: string; hint: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState('');
+  const ref = React.useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setErr(''); setUploading(true);
+    const r = await uploadCMSImage(file, token);
+    setUploading(false);
+    if (r.success && r.url) onChange(r.url);
+    else setErr(r.error ?? 'Upload failed');
+  };
+
+  return (
+    <div className="space-y-2">
+      <input ref={ref} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+      <div className="flex gap-2 items-start">
+        {value && (
+          <img src={value} alt="" className="w-20 h-14 object-cover rounded-lg border border-gray-200 flex-shrink-0"
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        )}
+        <div className="flex-1 space-y-1.5">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => ref.current?.click()} disabled={uploading}
+              className="px-3 py-2 bg-[#d4af37]/10 text-[#b8960c] rounded-lg text-xs font-semibold hover:bg-[#d4af37]/20 transition-all disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0">
+              {uploading
+                ? <><div className="w-3 h-3 border border-[#b8960c] border-t-transparent rounded-full animate-spin" />Uploading…</>
+                : <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>Upload</>}
+            </button>
+            {value && (
+              <button type="button" onClick={() => onChange('')}
+                className="px-3 py-2 bg-red-50 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-100 transition-all">
+                Remove
+              </button>
+            )}
+          </div>
+          <input className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-[#d4af37]/40"
+            value={value} placeholder="Or paste image URL…" onChange={e => onChange(e.target.value)} />
+          {hint && <p className="text-xs text-gray-400">{hint}</p>}
+          {err && <p className="text-xs text-red-500">{err}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AdminPageContent() {
+  const { ready } = useAdminGuard();
+  const token = useToken();
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null);
+  const [activeSection, setActiveSection] = useState(0);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${BASE}/admin/settings`, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await r.json();
+      if (json.success) {
+        const map: Record<string, string> = {};
+        (json.raw ?? []).forEach((s: any) => { map[s.key] = typeof s.value === 'object' ? JSON.stringify(s.value) : String(s.value ?? ''); });
+        setDraft(map);
+      }
+    } catch { /* silent */ }
+    setLoading(false);
+  }, [token]);
+
+  useEffect(() => { if (ready) load(); }, [ready, load]);
+
+  const save = async () => {
+    setSaving(true); setSaveStatus(null);
+    try {
+      const allFields = PAGE_SECTIONS.flatMap(s => s.fields);
+      const payload = allFields.map(f => ({ key: f.key, value: draft[f.key] ?? '', group: 'pages', isPublic: true }));
+      const r = await fetch(`${BASE}/admin/settings/bulk`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: payload }),
+      });
+      const json = await r.json();
+      setSaveStatus(json.success ? 'saved' : 'error');
+      if (json.success) load();
+    } catch { setSaveStatus('error'); }
+    setSaving(false);
+    setTimeout(() => setSaveStatus(null), 3000);
+  };
+
+  const set = (key: string, val: string) => setDraft(d => ({ ...d, [key]: val }));
+
+  const inputCls = "w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#d4af37]/40 focus:border-[#d4af37] transition-all placeholder:text-gray-300";
+
+  if (!ready) return null;
+
+  return (
+    <AdminLayout onRefresh={load}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-[#0d1117]">Page Content Manager</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Edit all text and images shown on the public website</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {saveStatus === 'saved' && <span className="text-emerald-600 text-sm font-medium">✓ Saved</span>}
+          {saveStatus === 'error' && <span className="text-red-500 text-sm font-medium">Save failed</span>}
+          <button onClick={save} disabled={saving}
+            className="px-5 py-2.5 bg-[#0d1117] text-white rounded-xl text-sm font-semibold hover:bg-[#1a2332] disabled:opacity-50 transition-all">
+            {saving ? 'Saving…' : 'Save All Changes'}
+          </button>
+        </div>
+      </div>
+
+      {/* Section tabs */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {PAGE_SECTIONS.map((s, i) => (
+          <button key={i} onClick={() => setActiveSection(i)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+              activeSection === i ? 'bg-[#0d1117] text-white border-transparent' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+            }`}>
+            {s.page}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="w-10 h-10 border-4 border-[#d4af37] border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {PAGE_SECTIONS[activeSection].fields.map(field => (
+            <div key={field.key} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d1117]">{field.label}</label>
+                  <span className="text-xs font-mono text-gray-400">{field.key}</span>
+                </div>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${COLOR_MAP[PAGE_SECTIONS[activeSection].color]}`}>
+                  {field.type}
+                </span>
+              </div>
+              {field.type === 'image' ? (
+                <ImageFieldUpload value={draft[field.key] ?? ''} onChange={v => set(field.key, v)} token={token} hint={field.hint} />
+              ) : field.type === 'textarea' ? (
+                <textarea className={inputCls} rows={3} value={draft[field.key] ?? ''} placeholder={field.hint}
+                  onChange={e => set(field.key, e.target.value)} />
+              ) : (
+                <input className={inputCls} value={draft[field.key] ?? ''} placeholder={field.hint}
+                  onChange={e => set(field.key, e.target.value)} />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </AdminLayout>
+  );
+}

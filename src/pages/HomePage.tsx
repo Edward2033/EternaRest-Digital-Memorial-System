@@ -51,7 +51,8 @@ function Stars({ n }: { n: number }) {
 }
 
 export default function HomePage() {
-  const { heroSlides, services, gallery, testimonials, banners, faqs, loading } = useCMS();
+  const { heroSlides, services, gallery, testimonials, banners, faqs, settings, loading } = useCMS();
+  const s = settings;
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [testimonialForm, setTestimonialForm] = useState({
     name: '',
@@ -64,17 +65,22 @@ export default function HomePage() {
   const [testimonialError, setTestimonialError] = useState('');
 
   const hero           = heroSlides[0] ?? null;
-  const heroTitle      = hero?.title         ?? FALLBACK_HERO.title;
-  const heroHighlight  = hero?.highlightText ?? FALLBACK_HERO.highlightText;
-  const heroDesc       = hero?.description   ?? FALLBACK_HERO.description;
-  const heroBg         = hero?.image         ?? FALLBACK_HERO.image;
-  const heroBtn1Text   = hero?.button1Text   ?? FALLBACK_HERO.button1Text;
-  const heroBtn1Link   = hero?.button1Link   ?? FALLBACK_HERO.button1Link;
-  const heroBtn2Text   = hero?.button2Text   ?? FALLBACK_HERO.button2Text;
-  const heroBtn2Link   = hero?.button2Link   ?? FALLBACK_HERO.button2Link;
+  const heroTitle      = s.home_hero_title       || hero?.title         || FALLBACK_HERO.title;
+  const heroHighlight  = s.home_hero_highlight   || hero?.highlightText || FALLBACK_HERO.highlightText;
+  const heroDesc       = s.home_hero_description || hero?.description   || FALLBACK_HERO.description;
+  const heroBg         = s.home_hero_image       || hero?.image         || FALLBACK_HERO.image;
+  const heroBtn1Text   = s.home_hero_btn1_text   || hero?.button1Text   || FALLBACK_HERO.button1Text;
+  const heroBtn1Link   = s.home_hero_btn1_link   || hero?.button1Link   || FALLBACK_HERO.button1Link;
+  const heroBtn2Text   = s.home_hero_btn2_text   || hero?.button2Text   || FALLBACK_HERO.button2Text;
+  const heroBtn2Link   = s.home_hero_btn2_link   || hero?.button2Link   || FALLBACK_HERO.button2Link;
+
+  const gardenFromSettings = [1,2,3,4,5,6].map(n => s[`home_garden_image_${n}`]).filter(Boolean) as string[];
+  const gardenFromGallery  = gallery.flatMap(a => a.images).filter(Boolean).slice(0, 6);
+  const galleryImages      = gardenFromSettings.length > 0 ? gardenFromSettings
+                           : gardenFromGallery.length > 0  ? gardenFromGallery
+                           : FALLBACK_GALLERY_IMAGES;
 
   const displayServices     = services.length > 0 ? services : FALLBACK_SERVICES;
-  const galleryImages        = gallery.length > 0 ? gallery.flatMap(a => a.images).filter(Boolean).slice(0, 6) : FALLBACK_GALLERY_IMAGES;
   const displayTestimonials  = testimonials.length > 0 ? testimonials : FALLBACK_TESTIMONIALS;
   const homeBanners          = banners.filter(b => b.active && (b.location === 'home' || !b.location));
   const displayFaqs          = faqs.length > 0 ? faqs : [];
@@ -202,8 +208,8 @@ export default function HomePage() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">Our Services</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">We provide comprehensive memorial services to honor and preserve the memory of your loved ones.</p>
+            <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">{s.home_services_title || 'Our Services'}</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">{s.home_services_subtitle || 'We provide comprehensive memorial services to honor and preserve the memory of your loved ones.'}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {displayServices.map((svc) => (
@@ -233,8 +239,8 @@ export default function HomePage() {
         <section className="py-20 bg-[#f8f6f3]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">Our Memorial Gardens</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">A serene and beautiful final resting place designed with care.</p>
+              <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">{s.home_garden_title || 'Our Memorial Gardens'}</h2>
+              <p className="text-gray-600 max-w-2xl mx-auto">{s.home_garden_subtitle || 'A serene and beautiful final resting place designed with care.'}</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {galleryImages.map((img, i) => (
@@ -280,7 +286,7 @@ export default function HomePage() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">What Families Say</h2>
+            <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">{s.home_testimonials_title || 'What Families Say'}</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">Hear from families who trusted us to honor their loved ones.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -426,9 +432,9 @@ export default function HomePage() {
       {/* ── CTA ──────────────────────────────────────────────────────────────── */}
       <section className="py-20 bg-gradient-to-r from-[#1a2332] to-[#2d3a4f]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-6">Honor Your Loved One Today</h2>
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-6">{s.home_cta_title || 'Honor Your Loved One Today'}</h2>
           <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
-            Create a lasting digital memorial that preserves their memory for generations.
+            {s.home_cta_subtitle || 'Create a lasting digital memorial that preserves their memory for generations.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/book" className="inline-flex items-center justify-center px-8 py-4 bg-[#d4af37] text-[#1a2332] font-semibold rounded-lg hover:bg-[#b8960c] transition-all shadow-lg">

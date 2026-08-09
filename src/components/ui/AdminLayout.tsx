@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/gallery':      'Gallery',
   '/admin/faqs':         'FAQs',
   '/admin/packages':     'Packages',
+  '/admin/page-content': 'Page Content',
   '/admin/users':        'Users',
   '/admin/messages':     'Messages',
   '/admin/settings':     'Settings',

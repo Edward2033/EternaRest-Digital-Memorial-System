@@ -19,7 +19,7 @@ import MemorialPage from "./pages/MemorialPage";
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import { AdminPayments, AdminUsers, AdminMessages, AdminPackages } from "./pages/admin/AdminStubs";
+import { AdminPayments, AdminUsers, AdminMessages, AdminPackages, AdminPageContent } from "./pages/admin/AdminStubs";
 import { AdminServices, AdminBanners, AdminHeroSlides, AdminTestimonials, AdminGallery, AdminSettings, AdminFAQs } from "./pages/admin/AdminCMS";
 
 // Layout Components
@@ -77,6 +77,7 @@ const App = () => (
               <Route path="/admin/settings"     element={<AdminSettings />} />
               <Route path="/admin/faqs"         element={<AdminFAQs />} />
               <Route path="/admin/packages"     element={<AdminPackages />} />
+              <Route path="/admin/page-content"  element={<AdminPageContent />} />
               
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

@@ -119,8 +119,12 @@ exports.bulkUpdateSettings = async (req, res) => {
     if (!Array.isArray(settings)) {
       return res.status(400).json({ success: false, message: 'settings must be an array' });
     }
-    const ops = settings.map(({ key, value }) => ({
-      updateOne: { filter: { key }, update: { $set: { key, value } }, upsert: true },
+    const ops = settings.map(({ key, value, group, isPublic }) => ({
+      updateOne: {
+        filter: { key },
+        update: { $set: { key, value, ...(group !== undefined && { group }), ...(isPublic !== undefined && { isPublic }) } },
+        upsert: true,
+      },
     }));
     await Setting.bulkWrite(ops);
     res.json({ success: true, message: `${settings.length} settings updated` });
