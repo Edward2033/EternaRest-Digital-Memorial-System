@@ -199,19 +199,11 @@ export async function uploadToCloudinary(
   }
 }
 
-/** Upload CMS image — tries Cloudinary first, falls back to local server. */
+/** Upload CMS image — always goes through backend which uploads to Cloudinary. */
 export async function uploadCMSImage(
   file: File,
   token: string,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
-  // Try Cloudinary if configured
-  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-  if (cloudName) {
-    const result = await uploadToCloudinary(file);
-    if (result.success) return result;
-  }
-
-  // Fallback: local server upload
   try {
     const formData = new FormData();
     formData.append('image', file);
@@ -221,9 +213,10 @@ export async function uploadCMSImage(
       body:    formData,
     });
     const json = await res.json();
-    if (json.success) {
-      const serverBase = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
-      const url = json.url.startsWith('http') ? json.url : `${serverBase}${json.url}`;
+    if (json.success && json.url) {
+      const url = json.url.startsWith('http')
+        ? json.url
+        : `${API_BASE.replace('/api', '')}${json.url}`;
       return { success: true, url };
     }
     return { success: false, error: json.message ?? 'Upload failed' };
