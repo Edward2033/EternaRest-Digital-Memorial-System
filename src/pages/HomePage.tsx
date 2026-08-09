@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useCMS } from '@/hooks/useCMS';
 
@@ -54,31 +54,40 @@ export default function HomePage() {
   const { heroSlides, services, gallery, testimonials, banners, faqs, settings, loading } = useCMS();
   const s = settings;
   const [openFaq, setOpenFaq] = useState<string | null>(null);
-  const [testimonialForm, setTestimonialForm] = useState({
-    name: '',
-    email: '',
-    rating: 5,
-    message: '',
-  });
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const slideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auto-rotate hero slides every 5 seconds
+  useEffect(() => {
+    if (heroSlides.length <= 1) return;
+    slideTimer.current = setInterval(() => setCurrentSlide(i => (i + 1) % heroSlides.length), 5000);
+    return () => { if (slideTimer.current) clearInterval(slideTimer.current); };
+  }, [heroSlides.length]);
+
+  // Active slide content — settings keys override only when no slides exist
+  const activeSlide   = heroSlides[currentSlide] ?? null;
+  const heroTitle     = (heroSlides.length === 0 ? s.home_hero_title       : null) || activeSlide?.title         || FALLBACK_HERO.title;
+  const heroHighlight = (heroSlides.length === 0 ? s.home_hero_highlight   : null) || activeSlide?.highlightText || FALLBACK_HERO.highlightText;
+  const heroDesc      = (heroSlides.length === 0 ? s.home_hero_description : null) || activeSlide?.description   || FALLBACK_HERO.description;
+  const heroBtn1Text  = (heroSlides.length === 0 ? s.home_hero_btn1_text   : null) || activeSlide?.button1Text   || FALLBACK_HERO.button1Text;
+  const heroBtn1Link  = (heroSlides.length === 0 ? s.home_hero_btn1_link   : null) || activeSlide?.button1Link   || FALLBACK_HERO.button1Link;
+  const heroBtn2Text  = (heroSlides.length === 0 ? s.home_hero_btn2_text   : null) || activeSlide?.button2Text   || FALLBACK_HERO.button2Text;
+  const heroBtn2Link  = (heroSlides.length === 0 ? s.home_hero_btn2_link   : null) || activeSlide?.button2Link   || FALLBACK_HERO.button2Link;
+
+  // Garden images: settings keys → gallery albums → hardcoded fallback
+  // Only use fallback when NOT loading (avoids flash)
+  const gardenFromSettings = [1,2,3,4,5,6].map(n => s[`home_garden_image_${n}`]).filter(Boolean) as string[];
+  const gardenFromGallery  = gallery.flatMap(a => a.images).filter(Boolean).slice(0, 6);
+  const galleryImages = loading
+    ? []  // show nothing while loading
+    : gardenFromSettings.length > 0 ? gardenFromSettings
+    : gardenFromGallery.length  > 0 ? gardenFromGallery
+    : FALLBACK_GALLERY_IMAGES;
+
+  const [testimonialForm, setTestimonialForm] = useState({ name: '', email: '', rating: 5, message: '' });
   const [submittingTestimonial, setSubmittingTestimonial] = useState(false);
   const [testimonialSuccess, setTestimonialSuccess] = useState(false);
   const [testimonialError, setTestimonialError] = useState('');
-
-  const hero           = heroSlides[0] ?? null;
-  const heroTitle      = s.home_hero_title       || hero?.title         || FALLBACK_HERO.title;
-  const heroHighlight  = s.home_hero_highlight   || hero?.highlightText || FALLBACK_HERO.highlightText;
-  const heroDesc       = s.home_hero_description || hero?.description   || FALLBACK_HERO.description;
-  const heroBg         = s.home_hero_image       || hero?.image         || FALLBACK_HERO.image;
-  const heroBtn1Text   = s.home_hero_btn1_text   || hero?.button1Text   || FALLBACK_HERO.button1Text;
-  const heroBtn1Link   = s.home_hero_btn1_link   || hero?.button1Link   || FALLBACK_HERO.button1Link;
-  const heroBtn2Text   = s.home_hero_btn2_text   || hero?.button2Text   || FALLBACK_HERO.button2Text;
-  const heroBtn2Link   = s.home_hero_btn2_link   || hero?.button2Link   || FALLBACK_HERO.button2Link;
-
-  const gardenFromSettings = [1,2,3,4,5,6].map(n => s[`home_garden_image_${n}`]).filter(Boolean) as string[];
-  const gardenFromGallery  = gallery.flatMap(a => a.images).filter(Boolean).slice(0, 6);
-  const galleryImages      = gardenFromSettings.length > 0 ? gardenFromSettings
-                           : gardenFromGallery.length > 0  ? gardenFromGallery
-                           : FALLBACK_GALLERY_IMAGES;
 
   const displayServices     = services.length > 0 ? services : FALLBACK_SERVICES;
   const displayTestimonials  = testimonials.length > 0 ? testimonials : FALLBACK_TESTIMONIALS;
@@ -176,13 +185,23 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
-      <section className="relative h-[80vh] min-h-[600px] flex items-center">
-        <div className="absolute inset-0">
-          <img src={heroBg} alt="Memorial Garden" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1a2332]/90 via-[#1a2332]/70 to-transparent" />
-        </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      {/* ── Hero Carousel ──────────────────────────────────────────────────── */}
+      <section className="relative h-[80vh] min-h-[600px] flex items-center overflow-hidden">
+        {/* Slides */}
+        {(heroSlides.length > 0 ? heroSlides : [null]).map((slide, i) => {
+          // Each slide uses its own image; settings key only overrides when no slides exist
+          const bg = (heroSlides.length === 0 ? s.home_hero_image : null) || slide?.image || FALLBACK_HERO.image;
+          const active = i === currentSlide;
+          return (
+            <div key={i} className={`absolute inset-0 transition-opacity duration-1000 ${active ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+              <img src={bg} alt="" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#1a2332]/90 via-[#1a2332]/70 to-transparent" />
+            </div>
+          );
+        })}
+
+        {/* Content */}
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
           <div className="max-w-2xl">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white leading-tight mb-6">
               {heroTitle}<br />
@@ -190,18 +209,39 @@ export default function HomePage() {
             </h1>
             <p className="text-lg md:text-xl text-gray-300 mb-8 leading-relaxed">{heroDesc}</p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to={heroBtn1Link ?? '/book'}
+              <Link to={heroBtn1Link || '/book'}
                 className="inline-flex items-center justify-center px-8 py-4 bg-[#d4af37] text-[#1a2332] font-semibold rounded-lg hover:bg-[#b8960c] transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                 {heroBtn1Text}
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </Link>
-              <Link to={heroBtn2Link ?? '/search'}
+              <Link to={heroBtn2Link || '/search'}
                 className="inline-flex items-center justify-center px-8 py-4 border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-[#1a2332] transition-all duration-300">
                 {heroBtn2Text}
               </Link>
             </div>
           </div>
         </div>
+
+        {/* Prev / Next arrows — only when multiple slides */}
+        {heroSlides.length > 1 && (
+          <>
+            <button onClick={() => setCurrentSlide(i => (i - 1 + heroSlides.length) % heroSlides.length)}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-sm flex items-center justify-center text-white transition-all">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <button onClick={() => setCurrentSlide(i => (i + 1) % heroSlides.length)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-sm flex items-center justify-center text-white transition-all">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+            {/* Dot indicators */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+              {heroSlides.map((_, i) => (
+                <button key={i} onClick={() => setCurrentSlide(i)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all ${i === currentSlide ? 'bg-[#d4af37] scale-125' : 'bg-white/50 hover:bg-white/80'}`} />
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       {/* ── Services ─────────────────────────────────────────────────────────── */}
@@ -235,26 +275,29 @@ export default function HomePage() {
       </section>
 
       {/* ── Gallery ──────────────────────────────────────────────────────────── */}
-      {galleryImages.length > 0 && (
-        <section className="py-20 bg-[#f8f6f3]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">{s.home_garden_title || 'Our Memorial Gardens'}</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">{s.home_garden_subtitle || 'A serene and beautiful final resting place designed with care.'}</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {galleryImages.map((img, i) => (
-                <div key={i} className={`relative overflow-hidden rounded-xl shadow-lg group ${i === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}>
-                  <img src={img} alt={`Memorial ${i + 1}`}
-                    className={`w-full object-cover transition-transform duration-500 group-hover:scale-105 ${i === 0 ? 'h-[400px] md:h-full' : 'h-[250px]'}`}
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1a2332]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-              ))}
-            </div>
+      <section className="py-20 bg-[#f8f6f3]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#1a2332] mb-4">{s.home_garden_title || 'Our Memorial Gardens'}</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">{s.home_garden_subtitle || 'A serene and beautiful final resting place designed with care.'}</p>
           </div>
-        </section>
-      )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className={`rounded-xl bg-gray-200 animate-pulse ${i === 0 ? 'md:col-span-2 h-[400px]' : 'h-[250px]'}`} />
+                ))
+              : galleryImages.map((img, i) => (
+                  <div key={i} className={`relative overflow-hidden rounded-xl shadow-lg group ${i === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}>
+                    <img src={img} alt={`Memorial ${i + 1}`}
+                      className={`w-full object-cover transition-transform duration-500 group-hover:scale-105 ${i === 0 ? 'h-[400px] md:h-full' : 'h-[250px]'}`}
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1a2332]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+                ))
+            }
+          </div>
+        </div>
+      </section>
 
       {/* ── How It Works ─────────────────────────────────────────────────────── */}
       <section className="py-20 bg-[#1a2332]">
