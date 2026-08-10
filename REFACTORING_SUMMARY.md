@@ -49,7 +49,7 @@ VITE_CLOUDINARY_UPLOAD_PRESET=your_unsigned_preset
 #### Backend (.env)
 ```env
 # Database
-MONGODB_URI=mongodb+srv://EDCOLE:Edward_203@cluster0.ig5082q.mongodb.net/eternarest
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/eternarest
 
 # Server
 PORT=5000
