@@ -279,13 +279,16 @@ export function AdminServices() {
     setModal('edit');
   };
 
+  const [saveError, setSaveError] = useState('');
+
   const save = async () => {
-    setSaving(true);
+    setSaving(true); setSaveError('');
     const features = featuresRaw.split('\n').map(f => f.trim()).filter(Boolean);
     const payload = { ...form, features };
-    if (modal === 'add') await cmsPost('/services', token, payload);
-    else await cmsPut(`/services/${editId}`, token, payload);
-    setSaving(false); setModal(null); load();
+    const r = modal === 'add' ? await cmsPost('/services', token, payload) : await cmsPut(`/services/${editId}`, token, payload);
+    setSaving(false);
+    if (!r.success) { setSaveError(r.error ?? r.message ?? 'Save failed'); return; }
+    setModal(null); load();
   };
 
   const del = async () => { await cmsDel(`/services/${delId}`, token); setDelId(''); load(); };
@@ -316,7 +319,8 @@ export function AdminServices() {
         </>
       )}
       {modal && (
-        <Modal title={modal === 'add' ? 'Add Service' : 'Edit Service'} onClose={() => setModal(null)} onSave={save} saving={saving} wide>
+        <Modal title={modal === 'add' ? 'Add Service' : 'Edit Service'} onClose={() => { setModal(null); setSaveError(''); }} onSave={save} saving={saving} wide>
+          {saveError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
           <ImageUpload value={form.image} onChange={url => setForm(p => ({ ...p, image: url }))} token={token} label="Service Image" />
           <Field label="Title">
             <input className={inputCls} value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Service title" />
@@ -384,11 +388,14 @@ export function AdminBanners() {
     setModal('edit');
   };
 
+  const [saveError, setSaveError] = useState('');
+
   const save = async () => {
-    setSaving(true);
-    if (modal === 'add') await cmsPost('/banners', token, form);
-    else await cmsPut(`/banners/${editId}`, token, form);
-    setSaving(false); setModal(null); load();
+    setSaving(true); setSaveError('');
+    const r = modal === 'add' ? await cmsPost('/banners', token, form) : await cmsPut(`/banners/${editId}`, token, form);
+    setSaving(false);
+    if (!r.success) { setSaveError(r.error ?? r.message ?? 'Save failed'); return; }
+    setModal(null); load();
   };
 
   const del = async () => { await cmsDel(`/banners/${delId}`, token); setDelId(''); load(); };
@@ -419,7 +426,8 @@ export function AdminBanners() {
         </>
       )}
       {modal && (
-        <Modal title={modal === 'add' ? 'Add Banner' : 'Edit Banner'} onClose={() => setModal(null)} onSave={save} saving={saving} wide>
+        <Modal title={modal === 'add' ? 'Add Banner' : 'Edit Banner'} onClose={() => { setModal(null); setSaveError(''); }} onSave={save} saving={saving} wide>
+          {saveError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
           <ImageUpload value={form.image} onChange={url => setForm(p => ({ ...p, image: url }))} token={token} label="Banner Image" />
           <Field label="Title">
             <input className={inputCls} value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Banner title" />
@@ -495,11 +503,14 @@ export function AdminHeroSlides() {
     setModal('edit');
   };
 
+  const [saveError, setSaveError] = useState('');
+
   const save = async () => {
-    setSaving(true);
-    if (modal === 'add') await cmsPost('/heroslides', token, form);
-    else await cmsPut(`/heroslides/${editId}`, token, form);
-    setSaving(false); setModal(null); load();
+    setSaving(true); setSaveError('');
+    const r = modal === 'add' ? await cmsPost('/heroslides', token, form) : await cmsPut(`/heroslides/${editId}`, token, form);
+    setSaving(false);
+    if (!r.success) { setSaveError(r.error ?? r.message ?? 'Save failed'); return; }
+    setModal(null); load();
   };
 
   const del = async () => { await cmsDel(`/heroslides/${delId}`, token); setDelId(''); load(); };
@@ -530,7 +541,8 @@ export function AdminHeroSlides() {
         </>
       )}
       {modal && (
-        <Modal title={modal === 'add' ? 'Add Hero Slide' : 'Edit Hero Slide'} onClose={() => setModal(null)} onSave={save} saving={saving} wide>
+        <Modal title={modal === 'add' ? 'Add Hero Slide' : 'Edit Hero Slide'} onClose={() => { setModal(null); setSaveError(''); }} onSave={save} saving={saving} wide>
+          {saveError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
           <ImageUpload value={form.image} onChange={url => setForm(p => ({ ...p, image: url }))} token={token} label="Background Image" />
           <Field label="Title">
             <input className={inputCls} value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Main heading" />
@@ -600,11 +612,14 @@ export function AdminTestimonials() {
     setModal('edit');
   };
 
+  const [saveError, setSaveError] = useState('');
+
   const save = async () => {
-    setSaving(true);
-    if (modal === 'add') await cmsPost('/testimonials', token, form);
-    else await cmsPut(`/testimonials/${editId}`, token, form);
-    setSaving(false); setModal(null); load();
+    setSaving(true); setSaveError('');
+    const r = modal === 'add' ? await cmsPost('/testimonials', token, form) : await cmsPut(`/testimonials/${editId}`, token, form);
+    setSaving(false);
+    if (!r.success) { setSaveError(r.error ?? r.message ?? 'Save failed'); return; }
+    setModal(null); load();
   };
 
   const del = async () => { await cmsDel(`/testimonials/${delId}`, token); setDelId(''); load(); };
@@ -635,7 +650,8 @@ export function AdminTestimonials() {
         </>
       )}
       {modal && (
-        <Modal title={modal === 'add' ? 'Add Testimonial' : 'Edit Testimonial'} onClose={() => setModal(null)} onSave={save} saving={saving} wide>
+        <Modal title={modal === 'add' ? 'Add Testimonial' : 'Edit Testimonial'} onClose={() => { setModal(null); setSaveError(''); }} onSave={save} saving={saving} wide>
+          {saveError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
           <ImageUpload value={form.photo} onChange={url => setForm(p => ({ ...p, photo: url }))} token={token} label="Photo (optional)" />
           <Field label="Customer Name">
             <input className={inputCls} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" />
@@ -715,13 +731,16 @@ export function AdminGallery() {
     }
   };
 
+  const [saveError, setSaveError] = useState('');
+
   const save = async () => {
-    setSaving(true);
+    setSaving(true); setSaveError('');
     const images = imagesRaw.split('\n').map(s => s.trim()).filter(Boolean);
     const payload = { ...form, images };
-    if (modal === 'add') await cmsPost('/gallery', token, payload);
-    else await cmsPut(`/gallery/${editId}`, token, payload);
-    setSaving(false); setModal(null); load();
+    const r = modal === 'add' ? await cmsPost('/gallery', token, payload) : await cmsPut(`/gallery/${editId}`, token, payload);
+    setSaving(false);
+    if (!r.success) { setSaveError(r.error ?? r.message ?? 'Save failed'); return; }
+    setModal(null); load();
   };
 
   const del = async () => { await cmsDel(`/gallery/${delId}`, token); setDelId(''); load(); };
@@ -765,7 +784,8 @@ export function AdminGallery() {
         </>
       )}
       {modal && (
-        <Modal title={modal === 'add' ? 'Add Gallery Album' : 'Edit Gallery Album'} onClose={() => setModal(null)} onSave={save} saving={saving} wide>
+        <Modal title={modal === 'add' ? 'Add Gallery Album' : 'Edit Gallery Album'} onClose={() => { setModal(null); setSaveError(''); }} onSave={save} saving={saving} wide>
+          {saveError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
           <Field label="Title">
             <input className={inputCls} value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Album title" />
           </Field>

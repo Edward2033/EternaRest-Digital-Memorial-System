@@ -32,7 +32,7 @@ const crudFor = (Model, sortField = 'createdAt', sortDir = -1) => ({
   },
   update: async (req, res) => {
     try {
-      const doc = await Model.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+      const doc = await Model.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: false });
       if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
       res.json({ success: true, data: doc });
     } catch (e) { res.status(400).json({ success: false, error: e.message }); }

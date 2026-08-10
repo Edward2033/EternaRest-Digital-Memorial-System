@@ -19,7 +19,7 @@ const heroSlideSchema = new mongoose.Schema(
     },
     image: {
       type: String,
-      required: true,
+      default: '',
     },
     button1Text: { type: String, trim: true, default: null },
     button1Link: { type: String, trim: true, default: null },
