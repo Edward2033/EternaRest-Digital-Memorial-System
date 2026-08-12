@@ -15,14 +15,21 @@ connectDB();
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
   : ['http://localhost:5173'];
+
+// Always allow localhost in development
+if (!allowedOrigins.includes('http://localhost:5173')) {
+  allowedOrigins.push('http://localhost:5173');
+}
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow server-to-server (no origin) and listed origins
+    // Allow server-to-server calls (no origin) and listed origins
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origin ${origin} not allowed`));
+    // Don't throw — just deny cleanly so the error handler isn't triggered
+    console.warn(`⚠️  CORS blocked: ${origin}`);
+    cb(null, false);
   },
   credentials: true,
 }));
