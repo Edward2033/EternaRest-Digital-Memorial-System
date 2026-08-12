@@ -102,35 +102,37 @@ async function mtnInitiate({ amount, msisdn, externalId, note }) {
   const referenceId = crypto.randomUUID();
   const { access_token } = await mtnGetToken();
 
+  // Sandbox only accepts EUR + MTN test MSISDN — production uses real RWF + real number
+  const payAmount   = SANDBOX ? '100'         : String(amount);
+  const payCurrency = SANDBOX ? 'EUR'         : CURRENCY;
+  const payMsisdn   = SANDBOX ? '46733123454' : msisdn.replace(/[^0-9]/g, '');
+
   const headers = {
     'Authorization':             `Bearer ${access_token}`,
     'X-Reference-Id':            referenceId,
     'X-Target-Environment':      TARGET_ENV,
     'Ocp-Apim-Subscription-Key': MTN_SUB_KEY,
   };
-
-  // Only add callback URL if it's set (sandbox ignores it anyway)
   if (MTN_CALLBACK) headers['X-Callback-Url'] = MTN_CALLBACK;
 
-  const { status } = await jsonFetch(
+  const { status, body } = await jsonFetch(
     `${MTN_BASE_URL}/collection/v1_0/requesttopay`,
     { method: 'POST', headers },
     {
-      amount:       String(amount),
-      currency:     CURRENCY,
+      amount:       payAmount,
+      currency:     payCurrency,
       externalId:   String(externalId),
-      payer:        { partyIdType: 'MSISDN', partyId: msisdn.replace(/\D/g, '') },
-      payerMessage: note || 'EternaRest Memorial Payment',
-      payeeNote:    note || 'EternaRest Memorial Payment',
+      payer:        { partyIdType: 'MSISDN', partyId: payMsisdn },
+      payerMessage: (note || 'EternaRest Memorial Payment').substring(0, 160),
+      payeeNote:    (note || 'EternaRest Memorial Payment').substring(0, 160),
     },
   );
 
-  // 202 = accepted (async — customer gets USSD prompt)
   if (status !== 202) {
-    throw new Error(`MTN requesttopay failed with status ${status}`);
+    throw new Error(`MTN requesttopay failed with status ${status}: ${JSON.stringify(body)}`);
   }
 
-  console.log(`📱 MTN USSD push sent → ${msisdn} | ${amount} ${CURRENCY} | ref: ${referenceId}`);
+  console.log(`📱 MTN${SANDBOX ? ' [SANDBOX]' : ''} push → ${msisdn} | ${amount} ${CURRENCY} | ref: ${referenceId}`);
   return { referenceId, transactionId: referenceId, provider: 'mtn', status: 'PENDING' };
 }
 

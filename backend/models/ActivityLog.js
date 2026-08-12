@@ -9,7 +9,7 @@ const activityLogSchema = new mongoose.Schema(
     },
     actorType: {
       type: String,
-      enum: ['admin', 'family', 'system'],
+      enum: ['admin', 'family', 'system', 'customer'],
       default: 'system',
     },
     action: {
