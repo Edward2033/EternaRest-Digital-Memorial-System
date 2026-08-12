@@ -28,7 +28,7 @@ const paymentSchema = new mongoose.Schema(
     packageName: {
       type: String,
       required: true,
-      enum: ['essential', 'standard', 'premium', 'legacy'],
+      enum: ['basic', 'essential', 'standard', 'premium', 'legacy'],
     },
     amount: {
       type: Number,

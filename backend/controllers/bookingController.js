@@ -56,10 +56,12 @@ exports.createBooking = async (req, res) => {
     console.log('✅ Booking saved:', bookingId, '|', billingNumber);
 
     // Create placeholder Payment record (status: pending, no method yet)
+    const validPackageNames = ['basic', 'essential', 'standard', 'premium', 'legacy'];
+    const packageName = validPackageNames.includes(packageType) ? packageType : 'standard';
     const payment = await Payment.create({
       bookingId,
       billingNumber,
-      packageName: packageType || 'standard',
+      packageName,
       amount:      price       || 0,
       currency:    'RWF',
       status:      'pending',

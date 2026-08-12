@@ -622,14 +622,14 @@ export const api = {
       alreadyVerified?: boolean;
     }>('/payments/verify', payload);
 
-    // 202 PENDING comes back as success:false with status PENDING
-    if (!result.success && (result as any).data?.status !== 'PENDING') return result;
-
+    // 202 PENDING: backend returns success:false with status PENDING — treat as success
     const d = (result as any).data ?? {};
+    if (!result.success && d.status !== 'PENDING') return result;
+
     return {
       success: true,
       data: {
-        status:          d.status as 'SUCCESSFUL' | 'FAILED' | 'PENDING',
+        status:          (d.status ?? 'PENDING') as 'SUCCESSFUL' | 'FAILED' | 'PENDING',
         payment:         normalisePayment(d.payment || {}),
         invoice:         d.invoice  ? normaliseInvoice(d.invoice)  : undefined,
         booking:         d.booking  ? (d.booking as any) : undefined,

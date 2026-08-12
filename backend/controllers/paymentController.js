@@ -145,7 +145,6 @@ exports.verifyPayment = async (req, res) => {
         payment,
       });
     }
-
     // ── FAILED ────────────────────────────────────────────────────────────────
     if (normalised === 'FAILED') {
       await Payment.findByIdAndUpdate(payment._id, {

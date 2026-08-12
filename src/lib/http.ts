@@ -62,6 +62,10 @@ export async function request<T>(
     }
 
     if (!response.ok || json.success === false) {
+      // Special case: 202 PENDING — success:false but has a status field we need
+      if (response.status === 202 && json.status === 'PENDING') {
+        return { success: false, error: 'PENDING', data: json as unknown as T } as any;
+      }
       const message =
         (json.message as string) ??
         (json.error as string) ??
