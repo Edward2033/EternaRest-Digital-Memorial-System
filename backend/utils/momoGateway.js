@@ -73,6 +73,8 @@ async function mtnGetToken() {
   }
 
   const credentials = Buffer.from(`${MTN_API_USER}:${MTN_API_KEY}`).toString('base64');
+
+  // MTN token endpoint requires Content-Length: 0 even with no body
   const { status, body } = await jsonFetch(
     `${MTN_BASE_URL}/collection/token/`,
     {
@@ -80,6 +82,7 @@ async function mtnGetToken() {
       headers: {
         'Authorization':             `Basic ${credentials}`,
         'Ocp-Apim-Subscription-Key': MTN_SUB_KEY,
+        'Content-Length':            '0',
       },
     },
   );
@@ -87,7 +90,7 @@ async function mtnGetToken() {
   if (status !== 200) {
     throw new Error(`MTN token error ${status}: ${JSON.stringify(body)}`);
   }
-  return body; // { access_token, token_type, expires_in }
+  return body;
 }
 
 // ─── MTN: request to pay ──────────────────────────────────────────────────────
