@@ -14,20 +14,27 @@ const app = express();
 connectDB();
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
-  : ['http://localhost:5173'];
+// Trust Render's proxy (required for rate-limit + correct IP detection)
+app.set('trust proxy', 1);
 
-// Always allow localhost in development
-if (!allowedOrigins.includes('http://localhost:5173')) {
-  allowedOrigins.push('http://localhost:5173');
-}
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+const rawOrigins = [
+  process.env.ALLOWED_ORIGINS,
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+]
+  .filter(Boolean)
+  .flatMap(s => s.split(','))
+  .map(s => s.trim().replace(/\/$/, '')) // strip trailing slash
+  .filter(Boolean);
+
+const allowedOrigins = [...new Set(rawOrigins)];
+console.log('✅ CORS allowed origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow server-to-server calls (no origin) and listed origins
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    // Don't throw — just deny cleanly so the error handler isn't triggered
     console.warn(`⚠️  CORS blocked: ${origin}`);
     cb(null, false);
   },
