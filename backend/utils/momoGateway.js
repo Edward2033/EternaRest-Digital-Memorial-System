@@ -129,10 +129,12 @@ async function mtnInitiate({ amount, msisdn, externalId, note }) {
   );
 
   if (status !== 202) {
+    console.error('❌ MTN requesttopay rejected:', status, JSON.stringify(body));
+    console.error('❌ MTN payload sent:', JSON.stringify({ amount: payAmount, currency: payCurrency, partyId: payMsisdn, externalId: String(externalId), TARGET_ENV }));
     throw new Error(`MTN requesttopay failed with status ${status}: ${JSON.stringify(body)}`);
   }
 
-  console.log(`📱 MTN${SANDBOX ? ' [SANDBOX]' : ''} push → ${msisdn} | ${amount} ${CURRENCY} | ref: ${referenceId}`);
+  console.log(`📱 MTN${SANDBOX ? ' [SANDBOX]' : ''} push → ${payMsisdn} | ${payAmount} ${payCurrency} | ref: ${referenceId}`);
   return { referenceId, transactionId: referenceId, provider: 'mtn', status: 'PENDING' };
 }
 
