@@ -16,7 +16,7 @@ services:
       - key: USD_TO_RWF_RATE
         value: 1300
       - key: MOMO_SANDBOX
-        value: false
+        value: true
       - key: MTN_BASE_URL
         value: https://sandbox.momodeveloper.mtn.com
       - key: MTN_TARGET_ENVIRONMENT
