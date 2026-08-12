@@ -85,11 +85,12 @@ function normaliseBooking(b: RawBooking): Booking {
 }
 
 function normaliseMedia(m: { _id: string; type: MediaType; url: string; caption?: string }, memorialId: string, index: number): Media {
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace('/api', '');
   return {
     id:            m._id,
     memorial_id:   memorialId,
     media_type:    m.type === 'video' ? 'video' : 'photo',
-    url:           m.url?.startsWith('http') ? m.url : `http://localhost:5000${m.url}`,
+    url:           m.url?.startsWith('http') ? m.url : `${apiBase}${m.url}`,
     caption:       m.caption,
     display_order: index,
   };

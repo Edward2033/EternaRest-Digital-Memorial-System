@@ -14,7 +14,18 @@ const app = express();
 connectDB();
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173'];
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow server-to-server (no origin) and listed origins
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true,
+}));
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 const loginLimiter = rateLimit({

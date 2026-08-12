@@ -6,7 +6,65 @@ services:
     buildCommand: npm install
     startCommand: node server.js
     envVars:
+      # ── Public / non-secret ──────────────────────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 5000
+      - key: MOMO_CURRENCY
+        value: RWF
+      - key: USD_TO_RWF_RATE
+        value: 1300
+      - key: MOMO_SANDBOX
+        value: false
+      - key: MTN_BASE_URL
+        value: https://proxy.momoapi.mtn.com
+      - key: AIRTEL_BASE_URL
+        value: https://openapi.airtel.africa
+      - key: AIRTEL_COUNTRY
+        value: RW
+      - key: EMAIL_HOST
+        value: smtp-relay.brevo.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: LOG_LEVEL
+        value: info
+
+      # ── Secrets — set these in Render Dashboard → Environment ────────────────
+      # NEVER commit real values here. Add them manually in the Render UI.
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: MTN_MOMO_NUMBER
+        sync: false
+      - key: AIRTEL_MONEY_NUMBER
+        sync: false
+      - key: MTN_COLLECTION_PRIMARY_KEY
+        sync: false
+      - key: MTN_API_USER
+        sync: false
+      - key: MTN_API_KEY
+        sync: false
+      - key: MTN_CALLBACK_URL
+        sync: false
+      - key: AIRTEL_CLIENT_ID
+        sync: false
+      - key: AIRTEL_CLIENT_SECRET
+        sync: false
