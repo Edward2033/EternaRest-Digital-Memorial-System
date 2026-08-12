@@ -18,7 +18,9 @@ services:
       - key: MOMO_SANDBOX
         value: false
       - key: MTN_BASE_URL
-        value: https://proxy.momoapi.mtn.com
+        value: https://sandbox.momodeveloper.mtn.com
+      - key: MTN_TARGET_ENVIRONMENT
+        value: sandbox
       - key: AIRTEL_BASE_URL
         value: https://openapi.airtel.africa
       - key: AIRTEL_COUNTRY
