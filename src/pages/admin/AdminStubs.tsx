@@ -49,15 +49,36 @@ const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { year: '
 interface Payment {
   _id: string; paymentId: string; bookingId: string; billingNumber: string;
   packageName: string; amount: number; currency: string; method: string;
-  phoneNumber: string; status: string; transactionId?: string; createdAt: string;
+  phoneNumber: string; status: string; transactionId?: string;
+  transactionReference?: string; verifiedBy?: string; verifiedAt?: string;
+  paidAt?: string; notes?: string; createdAt: string;
 }
+
+interface Invoice {
+  _id: string; invoiceNumber: string; bookingId: string; amount: number;
+  currency: string; status: string; notes?: string; createdAt: string;
+}
+
+const METHOD_COLORS: Record<string, string> = {
+  mtn:    'bg-yellow-50 text-yellow-700 border border-yellow-200',
+  airtel: 'bg-red-50 text-red-600 border border-red-200',
+  cash:   'bg-green-50 text-green-700 border border-green-200',
+  card:   'bg-blue-50 text-blue-600 border border-blue-200',
+  other:  'bg-gray-100 text-gray-500 border border-gray-200',
+};
 
 export function AdminPayments() {
   const { ready } = useAdminGuard();
   const token = useToken();
-  const [items, setItems] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [items, setItems]       = useState<Payment[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState('all');
+  const [search, setSearch]     = useState('');
+  const [drawer, setDrawer]     = useState<Payment | null>(null);
+  const [invoice, setInvoice]   = useState<Invoice | null>(null);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [verifying, setVerifying] = useState<string | null>(null);
+  const [verifyMsg, setVerifyMsg] = useState<{ id: string; msg: string; ok: boolean } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,56 +93,275 @@ export function AdminPayments() {
 
   useEffect(() => { if (ready) load(); }, [ready, load]);
 
+  const openDrawer = async (p: Payment) => {
+    setDrawer(p);
+    setInvoice(null);
+    setInvoiceLoading(true);
+    try {
+      const r = await fetch(`${BASE}/payments/${p._id}/invoice`, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await r.json();
+      if (json.success) setInvoice(json.invoice);
+    } catch { /* silent */ }
+    setInvoiceLoading(false);
+  };
+
+  const handleVerify = async (p: Payment) => {
+    setVerifying(p._id);
+    setVerifyMsg(null);
+    try {
+      const r = await fetch(`${BASE}/payments/verify`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: p.bookingId }),
+      });
+      const json = await r.json();
+      const ok = json.status === 'SUCCESSFUL' || json.alreadyVerified;
+      setVerifyMsg({ id: p._id, msg: ok ? '✓ Payment verified — memorial is live' : json.message || 'Still pending', ok });
+      if (ok) { load(); if (drawer?._id === p._id) setDrawer(prev => prev ? { ...prev, status: 'verified' } : prev); }
+    } catch { setVerifyMsg({ id: p._id, msg: 'Verification failed', ok: false }); }
+    setVerifying(null);
+  };
+
   if (!ready) return null;
 
   const FILTERS = ['all', 'pending', 'verified', 'completed', 'failed'];
 
+  const filtered = items.filter(p => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return p.bookingId?.toLowerCase().includes(q) ||
+           p.billingNumber?.toLowerCase().includes(q) ||
+           p.phoneNumber?.toLowerCase().includes(q) ||
+           p.transactionId?.toLowerCase().includes(q);
+  });
+
+  // Stats
+  const total     = items.length;
+  const verified  = items.filter(p => p.status === 'verified' || p.status === 'completed').length;
+  const pending   = items.filter(p => p.status === 'pending').length;
+  const failed    = items.filter(p => p.status === 'failed').length;
+  const revenue   = items.filter(p => p.status === 'verified' || p.status === 'completed').reduce((s, p) => s + (p.amount || 0), 0);
+
   return (
     <AdminLayout onRefresh={load}>
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-xl font-bold text-[#0d1117]">Payments</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{items.length} records</p>
+          <p className="text-sm text-gray-400 mt-0.5">{total} total records</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${filter === f ? 'bg-[#0d1117] text-white' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-              {f}
-            </button>
-          ))}
-        </div>
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          className="w-full sm:w-64 px-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#d4af37]/40"
+          placeholder="Search booking ID, phone…" />
       </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+        {[
+          { label: 'Total',    value: total,    color: 'bg-gray-50 text-gray-700' },
+          { label: 'Verified', value: verified, color: 'bg-emerald-50 text-emerald-700' },
+          { label: 'Pending',  value: pending,  color: 'bg-amber-50 text-amber-700' },
+          { label: 'Failed',   value: failed,   color: 'bg-red-50 text-red-600' },
+          { label: 'Revenue',  value: `RWF ${revenue.toLocaleString()}`, color: 'bg-[#d4af37]/10 text-[#b8960c]' },
+        ].map(s => (
+          <div key={s.label} className={`rounded-xl px-4 py-3 ${s.color}`}>
+            <p className="text-xs font-medium opacity-70">{s.label}</p>
+            <p className="text-lg font-bold tabular-nums mt-0.5">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {FILTERS.map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
+              filter === f ? 'bg-[#0d1117] text-white' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
+            }`}>{f}</button>
+        ))}
+      </div>
+
       {loading ? <Spinner /> : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
+            <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  {['Booking ID', 'Amount', 'Method', 'Phone', 'Transaction', 'Status', 'Date'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  {['Booking / Billing', 'Amount', 'Method', 'Phone', 'Transaction ID', 'Status', 'Date', 'Actions'].map(h => (
+                    <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {items.map(p => (
-                  <tr key={p._id} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="px-5 py-4 font-mono text-xs text-gray-600">{p.bookingId}</td>
-                    <td className="px-5 py-4 font-semibold text-[#0d1117]">{p.currency} {p.amount?.toLocaleString()}</td>
-                    <td className="px-5 py-4">
-                      <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium uppercase">{p.method}</span>
+                {filtered.map(p => (
+                  <tr key={p._id} className="hover:bg-amber-50/20 transition-colors">
+                    <td className="px-4 py-4">
+                      <p className="font-mono text-xs font-semibold text-[#0d1117]">{p.bookingId}</p>
+                      <p className="font-mono text-xs text-gray-400 mt-0.5">{p.billingNumber || '—'}</p>
                     </td>
-                    <td className="px-5 py-4 text-gray-500 text-xs">{p.phoneNumber || '—'}</td>
-                    <td className="px-5 py-4 font-mono text-xs text-gray-400 max-w-[120px] truncate">{p.transactionId || '—'}</td>
-                    <td className="px-5 py-4"><StatusBadge status={p.status} /></td>
-                    <td className="px-5 py-4 text-gray-400 text-xs whitespace-nowrap">{fmt(p.createdAt)}</td>
+                    <td className="px-4 py-4 font-bold text-[#0d1117] whitespace-nowrap">
+                      {p.currency} {p.amount?.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold uppercase ${METHOD_COLORS[p.method] ?? METHOD_COLORS.other}`}>
+                        {p.method || '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-gray-500 text-xs">{p.phoneNumber || '—'}</td>
+                    <td className="px-4 py-4 font-mono text-xs text-gray-400 max-w-[130px]">
+                      <span className="truncate block" title={p.transactionId}>{p.transactionId || '—'}</span>
+                    </td>
+                    <td className="px-4 py-4"><StatusBadge status={p.status} /></td>
+                    <td className="px-4 py-4 text-gray-400 text-xs whitespace-nowrap">{fmt(p.createdAt)}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-1.5">
+                        {/* View details */}
+                        <button onClick={() => openDrawer(p)} title="View details"
+                          className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 transition-all">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </button>
+                        {/* Manual verify — only for pending */}
+                        {p.status === 'pending' && (
+                          <button onClick={() => handleVerify(p)} disabled={verifying === p._id} title="Verify payment"
+                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all disabled:opacity-50">
+                            {verifying === p._id
+                              ? <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                              : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            }
+                          </button>
+                        )}
+                      </div>
+                      {/* Inline verify feedback */}
+                      {verifyMsg?.id === p._id && (
+                        <p className={`text-xs mt-1 font-medium ${verifyMsg.ok ? 'text-emerald-600' : 'text-amber-600'}`}>{verifyMsg.msg}</p>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {items.length === 0 && (
+            {filtered.length === 0 && (
               <div className="py-20 text-center text-gray-400 text-sm">No payment records found.</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Detail Drawer ── */}
+      {drawer && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDrawer(null)} />
+          <div className="relative bg-white w-full max-w-md h-full overflow-y-auto shadow-2xl flex flex-col">
+            {/* Drawer header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <div>
+                <h3 className="font-bold text-[#0d1117]">Payment Detail</h3>
+                <p className="text-xs font-mono text-gray-400 mt-0.5">{drawer.paymentId || drawer._id}</p>
+              </div>
+              <button onClick={() => setDrawer(null)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-all">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="flex-1 px-6 py-5 space-y-5">
+              {/* Status banner */}
+              <div className={`rounded-xl px-4 py-3 flex items-center justify-between ${
+                drawer.status === 'verified' || drawer.status === 'completed' ? 'bg-emerald-50 border border-emerald-200' :
+                drawer.status === 'pending' ? 'bg-amber-50 border border-amber-200' :
+                'bg-red-50 border border-red-200'
+              }`}>
+                <div>
+                  <p className="text-xs font-medium opacity-60 uppercase tracking-wide">Status</p>
+                  <p className="font-bold text-lg capitalize mt-0.5">{drawer.status}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-medium opacity-60 uppercase tracking-wide">Amount</p>
+                  <p className="font-bold text-xl mt-0.5">{drawer.currency} {drawer.amount?.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Details grid */}
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                {[
+                  ['Booking ID',    drawer.bookingId],
+                  ['Billing #',     drawer.billingNumber || '—'],
+                  ['Package',       drawer.packageName || '—'],
+                  ['Method',        (drawer.method || '—').toUpperCase()],
+                  ['Phone',         drawer.phoneNumber || '—'],
+                  ['Transaction ID',drawer.transactionId || drawer.transactionReference || '—'],
+                  ['Verified By',   drawer.verifiedBy || '—'],
+                  ['Verified At',   drawer.verifiedAt ? fmt(drawer.verifiedAt) : '—'],
+                  ['Paid At',       drawer.paidAt ? fmt(drawer.paidAt) : '—'],
+                  ['Created',       fmt(drawer.createdAt)],
+                ].map(([label, val]) => (
+                  <div key={label} className="flex justify-between items-start gap-4">
+                    <span className="text-xs text-gray-400 font-medium flex-shrink-0">{label}</span>
+                    <span className="text-xs text-gray-700 font-semibold text-right font-mono break-all">{val}</span>
+                  </div>
+                ))}
+                {drawer.notes && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-400 font-medium mb-1">Notes</p>
+                    <p className="text-xs text-gray-600">{drawer.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Invoice section */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Invoice</p>
+                {invoiceLoading ? (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm">
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    Loading invoice…
+                  </div>
+                ) : invoice ? (
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-400">Invoice #</span>
+                      <span className="text-xs font-mono font-semibold text-[#0d1117]">{invoice.invoiceNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-400">Amount</span>
+                      <span className="text-xs font-bold text-[#0d1117]">{invoice.currency} {invoice.amount?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-400">Status</span>
+                      <StatusBadge status={invoice.status} />
+                    </div>
+                    {invoice.notes && (
+                      <div className="pt-2 border-t border-gray-100">
+                        <p className="text-xs text-gray-500">{invoice.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic">No invoice found for this payment.</p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</p>
+                {drawer.status === 'pending' && (
+                  <button onClick={() => handleVerify(drawer)} disabled={verifying === drawer._id}
+                    className="w-full py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                    {verifying === drawer._id
+                      ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Verifying…</>
+                      : '✓ Verify & Approve Payment'
+                    }
+                  </button>
+                )}
+                {verifyMsg?.id === drawer._id && (
+                  <p className={`text-sm font-medium text-center ${verifyMsg.ok ? 'text-emerald-600' : 'text-amber-600'}`}>{verifyMsg.msg}</p>
+                )}
+                <a href={`/memorial/${drawer.bookingId}`} target="_blank" rel="noreferrer"
+                  className="w-full py-2.5 bg-[#d4af37]/10 text-[#b8960c] rounded-xl text-sm font-semibold hover:bg-[#d4af37]/20 transition-all flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                  View Memorial Page
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}
