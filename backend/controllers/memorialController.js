@@ -84,6 +84,24 @@ exports.addTribute = async (req, res) => {
   }
 };
 
+// PUT /api/memorials/:bookingId/biography
+exports.updateBiography = async (req, res) => {
+  try {
+    const id = req.params.bookingId;
+    const memorial = await Memorial.findOne({ $or: [{ bookingId: id }, { memorialId: id }] });
+    if (!memorial) return res.status(404).json({ success: false, message: 'Memorial not found' });
+
+    const { biography, familyInformation } = req.body;
+    if (biography   !== undefined) memorial.biography          = biography.trim();
+    if (familyInformation !== undefined) memorial.familyInformation = familyInformation.trim();
+    await memorial.save();
+
+    res.status(200).json({ success: true, memorial });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // POST /api/memorials/:bookingId/media  — family/public media upload
 exports.addMedia = async (req, res) => {
   try {

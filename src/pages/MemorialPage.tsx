@@ -34,6 +34,14 @@ export default function MemorialPage() {
   const [commentSuccess, setCommentSuccess] = useState(false);
   const [commentError, setCommentError] = useState('');
 
+  // Biography edit
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioText, setBioText] = useState('');
+  const [familyText, setFamilyText] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
+  const [bioError, setBioError] = useState('');
+  const [bioSuccess, setBioSuccess] = useState(false);
+
   // Media upload
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -48,12 +56,40 @@ export default function MemorialPage() {
     setError('');
     try {
       const res = await api.getMemorial(id!);
-      if (res.success) setMemorial(res.data);
-      else setError('Memorial not found');
+      if (res.success) {
+        setMemorial(res.data);
+        setBioText(res.data.biography || '');
+        setFamilyText(res.data.family_information || '');
+      } else setError('Memorial not found');
     } catch (e: any) {
       setError(e.message || 'Failed to load memorial');
     }
     setLoading(false);
+  };
+
+  const saveBiography = async () => {
+    setSavingBio(true);
+    setBioError('');
+    try {
+      const memId = memorial!.booking_id || memorial!.id;
+      const res = await fetch(`${API_BASE}/memorials/${memId}/biography`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ biography: bioText, familyInformation: familyText }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setMemorial(prev => prev ? { ...prev, biography: bioText, family_information: familyText } : prev);
+        setEditingBio(false);
+        setBioSuccess(true);
+        setTimeout(() => setBioSuccess(false), 4000);
+      } else {
+        setBioError(json.message || 'Failed to save');
+      }
+    } catch (e: any) {
+      setBioError(e.message || 'Failed to save');
+    }
+    setSavingBio(false);
   };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
@@ -215,19 +251,88 @@ export default function MemorialPage() {
           {/* Biography */}
           {activeTab === 'bio' && (
             <div>
-              <h2 className="text-2xl font-serif font-semibold text-[#1a2332] mb-6">Life Story</h2>
-              {memorial.biography ? (
-                <div className="prose prose-lg max-w-none text-gray-600 whitespace-pre-wrap leading-relaxed">
-                  {memorial.biography}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-serif font-semibold text-[#1a2332]">Life Story</h2>
+                {!editingBio && (
+                  <button onClick={() => { setBioText(memorial.biography || ''); setFamilyText(memorial.family_information || ''); setEditingBio(true); setBioError(''); }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-[#d4af37]/10 text-[#b8960c] rounded-lg text-sm font-semibold hover:bg-[#d4af37]/20 transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    {memorial.biography ? 'Edit' : 'Add Biography'}
+                  </button>
+                )}
+              </div>
+
+              {bioSuccess && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  Biography saved successfully.
+                </div>
+              )}
+
+              {editingBio ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Biography / Life Story</label>
+                    <textarea
+                      value={bioText}
+                      onChange={e => setBioText(e.target.value)}
+                      rows={10}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#d4af37] focus:border-transparent text-sm text-gray-700 leading-relaxed resize-y"
+                      placeholder="Write about this person's life — their story, achievements, passions, and the memories they leave behind…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Family Information <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <textarea
+                      value={familyText}
+                      onChange={e => setFamilyText(e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#d4af37] focus:border-transparent text-sm text-gray-700 leading-relaxed resize-y"
+                      placeholder="Survived by spouse, children, siblings…"
+                    />
+                  </div>
+                  {bioError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">{bioError}</div>
+                  )}
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={saveBiography} disabled={savingBio}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-[#d4af37] text-[#1a2332] font-semibold rounded-lg hover:bg-[#b8960c] transition-all disabled:opacity-50 text-sm">
+                      {savingBio ? (
+                        <><div className="w-4 h-4 border-2 border-[#1a2332] border-t-transparent rounded-full animate-spin" />Saving…</>
+                      ) : (
+                        <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>Save Biography</>
+                      )}
+                    </button>
+                    <button onClick={() => { setEditingBio(false); setBioError(''); }}
+                      className="px-6 py-2.5 border border-gray-300 text-gray-600 font-semibold rounded-lg hover:bg-gray-50 transition-all text-sm">
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <p className="text-gray-400 italic text-center py-8">No biography has been added yet.</p>
-              )}
-              {memorial.family_information && (
-                <div className="mt-8 p-6 bg-[#f8f6f3] rounded-xl">
-                  <h3 className="font-semibold text-[#1a2332] mb-3">Family Information</h3>
-                  <p className="text-gray-600 whitespace-pre-wrap">{memorial.family_information}</p>
-                </div>
+                <>
+                  {memorial.biography ? (
+                    <div className="prose prose-lg max-w-none text-gray-600 whitespace-pre-wrap leading-relaxed">
+                      {memorial.biography}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
+                      <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      <p className="text-gray-400 mb-4">No biography has been added yet.</p>
+                      <button onClick={() => { setBioText(''); setFamilyText(''); setEditingBio(true); }}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#d4af37] text-[#1a2332] font-semibold rounded-lg hover:bg-[#b8960c] transition-all text-sm">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                        Add Biography
+                      </button>
+                    </div>
+                  )}
+                  {memorial.family_information && (
+                    <div className="mt-8 p-6 bg-[#f8f6f3] rounded-xl">
+                      <h3 className="font-semibold text-[#1a2332] mb-3">Family Information</h3>
+                      <p className="text-gray-600 whitespace-pre-wrap">{memorial.family_information}</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
