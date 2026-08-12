@@ -54,7 +54,6 @@ exports.initiatePayment = async (req, res) => {
       externalId: booking.billingNumber || booking.bookingId,
       note:       `EternaRest — ${booking.deceasedName}`,
     });
-
     // Upsert Payment record with provider details
     const payment = await Payment.findOneAndUpdate(
       { bookingId },
@@ -97,7 +96,14 @@ exports.initiatePayment = async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Payment initiation error:', err);
-    res.status(500).json({ success: false, message: err.message });
+    // Map common MTN errors to friendly messages
+    const msg = err.message || '';
+    let userMessage = 'Payment initiation failed. Please try again.';
+    if (msg.includes('400'))  userMessage = 'Payment request rejected. Check your phone number and try again.';
+    if (msg.includes('401'))  userMessage = 'Payment service authentication failed. Please contact support.';
+    if (msg.includes('insufficient') || msg.includes('low')) userMessage = 'Insufficient balance on your mobile money account.';
+    if (msg.includes('credentials')) userMessage = 'Payment service not configured. Please contact support.';
+    res.status(500).json({ success: false, message: userMessage, detail: msg });
   }
 };
 
@@ -154,9 +160,9 @@ exports.verifyPayment = async (req, res) => {
       await Booking.findOneAndUpdate({ bookingId: payment.bookingId }, { paymentStatus: 'rejected' });
       return res.status(200).json({
         success: false,
-        message: 'Payment was declined or failed.',
+        message: statusResult.reason || 'Payment was declined or failed.',
         status:  'FAILED',
-        reason:  statusResult.reason,
+        reason:  statusResult.reason || 'Payment declined by provider.',
         payment,
       });
     }

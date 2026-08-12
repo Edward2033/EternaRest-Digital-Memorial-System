@@ -156,8 +156,26 @@ async function mtnCheckStatus(referenceId) {
     throw new Error(`MTN status check error ${status}: ${JSON.stringify(body)}`);
   }
 
-  console.log(`🔍 MTN status for ${referenceId}: ${body.status}`);
-  return { status: body.status, reason: body.reason || null, provider: 'mtn', raw: body };
+  console.log(`🔍 MTN status for ${referenceId}: ${body.status} | reason: ${body.reason || 'none'}`);
+
+  // Map MTN reason codes to friendly messages
+  const reasonMap = {
+    PAYER_NOT_FOUND:           'Phone number not registered on MTN MoMo.',
+    NOT_ALLOWED:               'Transaction not allowed for this account.',
+    NOT_ALLOWED_TARGET_ENV:    'Transaction not allowed in this environment.',
+    INVALID_CALLBACK_URL:      'Invalid callback URL.',
+    INVALID_CURRENCY:          'Currency not supported.',
+    SERVICE_UNAVAILABLE:       'MTN MoMo service is temporarily unavailable.',
+    INTERNAL_PROCESSING_ERROR: 'MTN internal error. Please try again.',
+    NOT_ENOUGH_FUNDS:          'Insufficient balance on your MTN MoMo account.',
+    PAYER_LIMIT_REACHED:       'Daily transaction limit reached on your MTN MoMo account.',
+    PAYEE_NOT_ALLOWED_TO_RECEIVE: 'This account cannot receive payments.',
+    EXPIRED:                   'Payment request expired. Please try again.',
+    REJECTED:                  'Payment was rejected by the customer.',
+  };
+  const friendlyReason = reasonMap[body.reason] || body.reason || null;
+
+  return { status: body.status, reason: friendlyReason, provider: 'mtn', raw: body };
 }
 
 // ─── Airtel: token cache ──────────────────────────────────────────────────────

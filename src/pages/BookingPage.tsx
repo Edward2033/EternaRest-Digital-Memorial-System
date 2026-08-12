@@ -142,7 +142,7 @@ export default function BookingPage() {
       const result = await api.initiatePayment({ bookingId, provider, phoneNumber: paymentPhone });
       if (!result.success) {
         setPaymentState('failed');
-        setPaymentError((result as any).error || 'Failed to initiate payment');
+        setPaymentError((result as any).error || 'Payment initiation failed. Please try again.');
         return;
       }
       setReferenceId(result.data.referenceId);
@@ -168,7 +168,7 @@ export default function BookingPage() {
           if (attempts >= MAX) stopPolling('Payment timed out. Please try again.');
           return;
         }
-        const { status, memorial, booking } = result.data;
+        const { status, memorial, booking, reason } = result.data;
         if (status === 'SUCCESSFUL') {
           stopPolling();
           setMemorialId(memorial?.memorialId ?? bookingId);
@@ -176,7 +176,7 @@ export default function BookingPage() {
           setPaymentState('success');
           setStep(5);
         } else if (status === 'FAILED') {
-          stopPolling('Payment was declined. Please try again.');
+          stopPolling(reason || 'Payment was declined. Please try again.');
         } else {
           setPaymentState('waiting');
           if (attempts >= MAX) stopPolling('Payment timed out. Please try again.');
