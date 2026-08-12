@@ -100,7 +100,19 @@ app.get('/memorial/:bookingId', (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+  res.json({
+    status: 'OK',
+    message: 'Server is running',
+    mtn: {
+      base_url:    process.env.MTN_BASE_URL || 'NOT SET',
+      target_env:  process.env.MTN_TARGET_ENVIRONMENT || 'NOT SET',
+      sub_key_len: (process.env.MTN_COLLECTION_PRIMARY_KEY || '').length,
+      sub_key_prefix: (process.env.MTN_COLLECTION_PRIMARY_KEY || '').substring(0, 6) + '…',
+      api_user_len: (process.env.MTN_API_USER || '').length,
+      api_key_len:  (process.env.MTN_API_KEY  || '').length,
+      sandbox:     process.env.MOMO_SANDBOX,
+    },
+  });
 });
 
 // Error handling
