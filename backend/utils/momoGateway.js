@@ -121,7 +121,7 @@ async function mtnInitiate({ amount, msisdn, externalId, note }) {
     {
       amount:       payAmount,
       currency:     payCurrency,
-      externalId:   String(externalId),
+      externalId:   String(externalId).replace(/[^0-9]/g, '').substring(0, 20) || '1',
       payer:        { partyIdType: 'MSISDN', partyId: payMsisdn },
       payerMessage: (note || 'EternaRest Memorial Payment').substring(0, 160),
       payeeNote:    (note || 'EternaRest Memorial Payment').substring(0, 160),
