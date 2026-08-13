@@ -66,15 +66,50 @@ function jsonFetch(url, options = {}, body = null) {
   });
 }
 
+// ─── MTN: provision a fresh API user (sandbox only) ─────────────────────────
+async function mtnProvisionApiUser(subKey) {
+  const newUserId = crypto.randomUUID();
+  const callbackHost = (process.env.MTN_CALLBACK_URL || 'https://eternarest-backend.onrender.com')
+    .replace(/\/api.*$/, '');
+
+  // 1. Create API user
+  const create = await jsonFetch(
+    `${MTN_BASE_URL}/v1_0/apiuser`,
+    { method: 'POST', headers: { 'X-Reference-Id': newUserId, 'Ocp-Apim-Subscription-Key': subKey } },
+    { providerCallbackHost: callbackHost },
+  );
+  if (create.status !== 201) throw new Error(`Provision user failed ${create.status}: ${JSON.stringify(create.body)}`);
+
+  // 2. Create API key for that user
+  const keyRes = await jsonFetch(
+    `${MTN_BASE_URL}/v1_0/apiuser/${newUserId}/apikey`,
+    { method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': subKey } },
+  );
+  if (keyRes.status !== 201) throw new Error(`Provision key failed ${keyRes.status}: ${JSON.stringify(keyRes.body)}`);
+
+  console.log(`✅ MTN sandbox: provisioned new API user ${newUserId}`);
+  return { apiUser: newUserId, apiKey: keyRes.body.apiKey };
+}
+
+// Runtime-mutable credentials (sandbox auto-provision)
+let _mtnApiUser = MTN_API_USER;
+let _mtnApiKey  = MTN_API_KEY;
+
 // ─── MTN: get Bearer token ────────────────────────────────────────────────────
-async function mtnGetToken() {
-  if (!MTN_API_USER || !MTN_API_KEY) {
-    throw new Error('MTN_API_USER and MTN_API_KEY must be set in environment variables');
+async function mtnGetToken(retried = false) {
+  if (!_mtnApiUser || !_mtnApiKey) {
+    if (SANDBOX && MTN_SUB_KEY) {
+      console.log('⚙️  MTN sandbox: no credentials — auto-provisioning...');
+      const creds = await mtnProvisionApiUser(MTN_SUB_KEY);
+      _mtnApiUser = creds.apiUser;
+      _mtnApiKey  = creds.apiKey;
+    } else {
+      throw new Error('MTN_API_USER and MTN_API_KEY must be set in environment variables');
+    }
   }
 
-  const credentials = Buffer.from(`${MTN_API_USER}:${MTN_API_KEY}`).toString('base64');
+  const credentials = Buffer.from(`${_mtnApiUser}:${_mtnApiKey}`).toString('base64');
 
-  // MTN token endpoint requires Content-Length: 0 even with no body
   const { status, body } = await jsonFetch(
     `${MTN_BASE_URL}/collection/token/`,
     {
@@ -87,29 +122,35 @@ async function mtnGetToken() {
     },
   );
 
-  if (status !== 200) {
-    throw new Error(`MTN token error ${status}: ${JSON.stringify(body)}`);
+  // 401 on sandbox = stale credentials — re-provision once
+  if (status === 401 && SANDBOX && !retried) {
+    console.log('⚙️  MTN sandbox: 401 on token — re-provisioning credentials...');
+    const creds = await mtnProvisionApiUser(MTN_SUB_KEY);
+    _mtnApiUser = creds.apiUser;
+    _mtnApiKey  = creds.apiKey;
+    return mtnGetToken(true);
   }
+
+  if (status !== 200) throw new Error(`MTN token error ${status}: ${JSON.stringify(body)}`);
   return body;
 }
 
 // ─── MTN: request to pay ──────────────────────────────────────────────────────
 async function mtnInitiate({ amount, msisdn, externalId, note }) {
-  if (!MTN_SUB_KEY || !MTN_API_USER || !MTN_API_KEY) {
-    throw new Error('MTN credentials not configured. Set MTN_COLLECTION_PRIMARY_KEY, MTN_API_USER, MTN_API_KEY.');
+  if (!MTN_SUB_KEY) {
+    throw new Error('MTN_COLLECTION_PRIMARY_KEY not configured.');
   }
 
   const referenceId = crypto.randomUUID();
   const { access_token } = await mtnGetToken();
 
-  // Sandbox only accepts EUR + MTN test MSISDN — production uses real RWF + real number
+  // Sandbox: fixed test values. Production: real values.
   const payAmount   = SANDBOX ? '100'         : String(amount);
   const payCurrency = SANDBOX ? 'EUR'         : CURRENCY;
   const payMsisdn   = SANDBOX ? '46733123454' : msisdn.replace(/[^0-9]/g, '');
-  // externalId must be numeric only, max 20 chars
   const cleanExtId  = String(externalId).replace(/[^0-9]/g, '').substring(0, 20) || String(Date.now()).substring(0, 10);
 
-  console.log(`📱 MTN${SANDBOX ? ' [SANDBOX]' : ''} | amount:${payAmount} ${payCurrency} | msisdn:${payMsisdn} | extId:${cleanExtId}`);
+  console.log(`📱 MTN${SANDBOX ? ' [SANDBOX]' : ''} | amount:${payAmount} ${payCurrency} | msisdn:${payMsisdn} | extId:${cleanExtId} | ref:${referenceId}`);
 
   const headers = {
     'Authorization':             `Bearer ${access_token}`,
@@ -133,12 +174,19 @@ async function mtnInitiate({ amount, msisdn, externalId, note }) {
   );
 
   if (status !== 202) {
-    console.error('❌ MTN requesttopay rejected:', status, JSON.stringify(body));
-    console.error('❌ MTN payload sent:', JSON.stringify({ amount: payAmount, currency: payCurrency, partyId: payMsisdn, externalId: String(externalId), TARGET_ENV }));
-    throw new Error(`MTN requesttopay failed with status ${status}: ${JSON.stringify(body)}`);
+    console.error(`❌ MTN requesttopay ${status}:`, JSON.stringify(body));
+    // 400 with empty body on sandbox = stale API user — re-provision and retry once
+    if (status === 400 && SANDBOX && JSON.stringify(body) === '{}') {
+      console.log('⚙️  MTN sandbox 400 {} — re-provisioning and retrying...');
+      const creds = await mtnProvisionApiUser(MTN_SUB_KEY);
+      _mtnApiUser = creds.apiUser;
+      _mtnApiKey  = creds.apiKey;
+      return mtnInitiate({ amount, msisdn, externalId, note });
+    }
+    throw new Error(`MTN payment failed: ${JSON.stringify(body) || status}`);
   }
 
-  console.log(`📱 MTN${SANDBOX ? ' [SANDBOX]' : ''} push → ${payMsisdn} | ${payAmount} ${payCurrency} | ref: ${referenceId}`);
+  console.log(`✅ MTN push sent | ref: ${referenceId}`);
   return { referenceId, transactionId: referenceId, provider: 'mtn', status: 'PENDING' };
 }
 
