@@ -210,30 +210,22 @@ export async function uploadMemorialMedia(
   return uploadToCloudinary(file);
 }
 
-/** Upload CMS image — direct browser → Cloudinary (same as memorial media). */
+/** Upload CMS image — goes through backend (signed Cloudinary upload, no preset needed). */
 export async function uploadCMSImage(
   file: File,
-  _token?: string,
+  token: string,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
-  const cloudName    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-  if (!cloudName || !uploadPreset) {
-    return { success: false, error: 'Cloudinary not configured (check VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET)' };
-  }
-
   try {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-    formData.append('folder', 'eternarest/cms');
-    const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-      method: 'POST',
-      body:   formData,
+    formData.append('image', file);
+    const res = await fetch(`${UPLOAD_BASE}/cms`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body:    formData,
     });
     const json = await res.json();
-    if (json.secure_url) return { success: true, url: json.secure_url };
-    return { success: false, error: json.error?.message ?? 'Cloudinary upload failed' };
+    if (json.success && json.url) return { success: true, url: json.url };
+    return { success: false, error: json.message ?? 'Upload failed' };
   } catch {
     return { success: false, error: 'Network error during upload' };
   }
