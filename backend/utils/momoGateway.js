@@ -106,6 +106,10 @@ async function mtnInitiate({ amount, msisdn, externalId, note }) {
   const payAmount   = SANDBOX ? '100'         : String(amount);
   const payCurrency = SANDBOX ? 'EUR'         : CURRENCY;
   const payMsisdn   = SANDBOX ? '46733123454' : msisdn.replace(/[^0-9]/g, '');
+  // externalId must be numeric only, max 20 chars
+  const cleanExtId  = String(externalId).replace(/[^0-9]/g, '').substring(0, 20) || String(Date.now()).substring(0, 10);
+
+  console.log(`📱 MTN${SANDBOX ? ' [SANDBOX]' : ''} | amount:${payAmount} ${payCurrency} | msisdn:${payMsisdn} | extId:${cleanExtId}`);
 
   const headers = {
     'Authorization':             `Bearer ${access_token}`,
@@ -121,7 +125,7 @@ async function mtnInitiate({ amount, msisdn, externalId, note }) {
     {
       amount:       payAmount,
       currency:     payCurrency,
-      externalId:   String(externalId).replace(/[^0-9]/g, '').substring(0, 20) || '1',
+      externalId:   cleanExtId,
       payer:        { partyIdType: 'MSISDN', partyId: payMsisdn },
       payerMessage: (note || 'EternaRest Memorial Payment').substring(0, 160),
       payeeNote:    (note || 'EternaRest Memorial Payment').substring(0, 160),

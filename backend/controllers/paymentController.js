@@ -41,12 +41,12 @@ exports.initiatePayment = async (req, res) => {
     const msisdn = (phoneNumber || booking.bookerPhone || '').trim();
     if (!msisdn) return res.status(400).json({ success: false, message: 'phoneNumber is required' });
 
-    const usdToRwf  = Number(process.env.USD_TO_RWF_RATE) || 1300;
-    const amountRwf = Math.round(booking.price * usdToRwf);
+    // Price is stored in RWF directly — no conversion needed
+    const amountRwf = Math.round(booking.price);
     const currency  = 'RWF';
 
     console.log(`\n💳 Initiating ${provider.toUpperCase()} | ${bookingId} | ${currency} ${amountRwf} → ${msisdn}`);
-
+    console.log(`💰 Booking price from DB: ${booking.price} RWF`);
     const result = await initiatePayment({
       provider,
       amount:     amountRwf,

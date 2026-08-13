@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api, Niche } from '@/lib/api';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+interface Package {
+  _id: string;
+  name: string;
+  displayName: string;
+  price: number; // in RWF
+  description?: string;
+  features: string[];
+  badge?: string;
+  popular?: boolean;
+}
+
 interface BookingForm {
   requester_name: string;
   requester_email: string;
@@ -39,6 +52,9 @@ export default function BookingPage() {
   const [memorialId, setMemorialId] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
 
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
   const [form, setForm] = useState<BookingForm>({
     requester_name: '',
     requester_email: '',
@@ -57,6 +73,7 @@ export default function BookingPage() {
 
   useEffect(() => {
     loadNiches();
+    loadPackages();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
@@ -67,6 +84,17 @@ export default function BookingPage() {
       if (response.success) setNiches(response.data);
     } catch {}
     setLoading(false);
+  };
+
+  const loadPackages = async () => {
+    try {
+      const res  = await fetch(`${API_BASE}/public/packages`);
+      const json = await res.json();
+      if (json.success && json.packages?.length > 0) {
+        setPackages(json.packages);
+        setSelectedPackage(json.packages[0]);
+      }
+    } catch {}
   };
 
   const getNicheStatus = (wall: string, row: number, slot: number) => {
@@ -103,6 +131,7 @@ export default function BookingPage() {
 
   // Step 3 → create booking → go to payment step
   const handleSubmitBooking = async () => {
+    if (!selectedPackage) { setError('Please select a package'); return; }
     setSubmitting(true);
     setError('');
     try {
@@ -115,8 +144,8 @@ export default function BookingPage() {
         preferred_row:   form.preferred_row,
         preferred_slot:  form.preferred_slot,
         message:         form.message,
-        package_type:    'standard',
-        price:           199,
+        package_type:    selectedPackage.name,
+        price:           selectedPackage.price, // already in RWF
       });
       if (response.success) {
         setBookingId(response.data.booking_id);
@@ -307,8 +336,33 @@ export default function BookingPage() {
           {/* ── Step 3: Review ── */}
           {step === 3 && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-serif font-semibold text-[#1a2332] mb-6">Review Your Booking</h2>
+              <h2 className="text-2xl font-serif font-semibold text-[#1a2332] mb-6">Select Package & Review</h2>
               {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+
+              {/* Package selection */}
+              {packages.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-3">Choose a Package</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {packages.map(pkg => (
+                      <button key={pkg._id} type="button" onClick={() => setSelectedPackage(pkg)}
+                        className={`text-left p-4 rounded-xl border-2 transition-all ${
+                          selectedPackage?._id === pkg._id
+                            ? 'border-[#d4af37] bg-[#d4af37]/10'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}>
+                        <div className="flex justify-between items-start">
+                          <span className="font-semibold text-[#1a2332]">{pkg.displayName}</span>
+                          {pkg.badge && <span className="text-xs bg-[#d4af37] text-white px-2 py-0.5 rounded-full">{pkg.badge}</span>}
+                        </div>
+                        <p className="text-[#d4af37] font-bold mt-1">RWF {pkg.price.toLocaleString()}</p>
+                        {pkg.description && <p className="text-xs text-gray-500 mt-1">{pkg.description}</p>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-[#f8f6f3] rounded-xl p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[['Your Name', form.requester_name], ['Email', form.requester_email], ['Phone', form.requester_phone], ["Deceased's Name", form.deceased_name]].map(([label, val]) => (
@@ -321,7 +375,9 @@ export default function BookingPage() {
                 </div>
                 <div className="border-t border-gray-200 pt-4">
                   <p className="text-sm text-gray-500">Package</p>
-                  <p className="font-medium text-[#1a2332]">Standard — <span className="text-[#d4af37] font-bold">RWF 258,700</span></p>
+                  <p className="font-medium text-[#1a2332]">
+                    {selectedPackage?.displayName || 'Standard'} — <span className="text-[#d4af37] font-bold">RWF {(selectedPackage?.price || 0).toLocaleString()}</span>
+                  </p>
                 </div>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
@@ -369,7 +425,9 @@ export default function BookingPage() {
               {/* Amount */}
               <div className="bg-[#f8f6f3] rounded-xl p-5 flex justify-between items-center">
                 <span className="text-gray-600">Amount to Pay</span>
-                <span className="text-2xl font-bold text-[#1a2332]">RWF {paymentAmount > 0 ? paymentAmount.toLocaleString() : '258,700'}</span>
+                <span className="text-2xl font-bold text-[#1a2332]">
+                  RWF {(paymentAmount > 0 ? paymentAmount : selectedPackage?.price || 0).toLocaleString()}
+                </span>
               </div>
 
               {/* Status messages */}
